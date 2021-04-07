@@ -24,8 +24,7 @@ nlp = stanza.Pipeline('en')
 dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
 # combine the lead paragraph and the body of the article
-
-i = 27
+i = 5
 
 text = dfa['LP'][i] + " " + dfa['TD'][i]
 firm = dfa["Firm"][i]
@@ -51,9 +50,10 @@ stext = r'said|n.t say|say|told|n.t tell\S+|tell\S+|assert\S+|according\s+to|n.t
 
 l1 = r'vice chair\S+|chair\S+|Governor\b|Congress\S+|\S+\s+head\s+of\s\S+|chair\S+\s+and\s+\S+\s+head\b|banker\b' \
      r'|specialist\b|accountant\b|journalist\b|reporter\b|analyst\b|consultant\b|boss\b' \
-     r'|executive\s+vice\s+president\s+of\s\S+|vice\s+president\b|president\b|general\s+manager\b|senior\s+manager\b' \
+     r'|executive\s+vice\s+president\s+of\s\S+|executive\s+vice\s+president\b|vice\s+president\b|president\b' \
+     r'|general\s+manager\b|senior\s+manager\b' \
      r'|sr\s+manager\b|manager\b|vp\s+of\s+\S+|vp\b|director\s+of\s+\S+|director\b|chief.+officer' \
-     r'| president\s+and\s+\S+|\S+\s+executive\b\s+of\s+the\s+\S+|\S+\s+executive\b\s+of\s+|\S+\s+executive\b'
+     r'| president\s+and\s+\S+|\S+\s+executive\b\s+of\s+the\s+\S+|chief\s+executive\b\s+of\s+|chief\s+executive\b'
 
 
 l2 = r'C.O\b'
@@ -136,6 +136,10 @@ for sent in doc.sentences:
             pos2a = re.findall(r'' + l1 + r'\W+(?:\w+\W+){0,' + str(mxld) + r'}?' + per + r'\b', stence)
             pos2b = re.findall(r'' + l2 + r'\W+(?:\w+\W+){0,' + str(mxld) + r'}?' + per + r'\b', stence)
             pos = pos1a + pos1b + pos2a + pos2b
+
+
+
+
 
             # If the title is mentioned, move to next step
 
@@ -442,11 +446,8 @@ for sent in doc.sentences:
                 s1 = re.sub(r'[' + qs + r']', '', s1)
                 s1 = re.sub(r'(' + stext + r')', '', s1)
                 s1 = re.sub(r'' + last + r'', '', s1)
-                print(n, last, s1,"stence:",stence)
-
 
                 if len(s1) > 0:
-                    print(n, s1, "stence",stence)
 
                     quote = s1
                     quote = re.sub(r'^' + stext + r'.+', '', quote)
@@ -970,6 +971,8 @@ for sent in doc.sentences:
 
     # print (n, "PERSON:",person,"ROLE:",role,"FIRM:",firm, "QUOTE:",quote, "TYPE:",qtype,"SAID:",qsaid,"REF:",qpref,"COMMENTS:",comment)
     # print(n, people)
+
+    print (n,stence)
     n += 1
 
 df
@@ -981,8 +984,7 @@ df
 # TO DO:
 # Interviews
 # Analyst calls
-# #204 sent 1 first person with title, but 2 orgs?
-# #178 Sentence 42 looks odd, as well.
+# Should add any information options if no 'people' but firm or person?
 
 
 
