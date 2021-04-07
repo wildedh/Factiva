@@ -17,22 +17,15 @@ import numpy as np
 import _pickle
 import time
 import stanza
-#stanza.download('en')
-nlp = stanza.Pipeline('en')
 
+# stanza.download('en')
+nlp = stanza.Pipeline('en')
 
 dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
-
-
-
-
-
-
-
 # combine the lead paragraph and the body of the article
 
-i = 203
+i = 182
 
 text = dfa['LP'][i] + " " + dfa['TD'][i]
 firm = dfa["Firm"][i]
@@ -60,6 +53,18 @@ rep = r'spokesman|spokesperson|spokeswoman|representative|management|official|ex
 start = r'\"|\“|\`\`'
 end = r'\"|\”|\'\''
 qs = r'\“|\`\`|\”|\"|\'\''
+
+d = re.findall(r'\(.+\)\s*(--|-)', text, re.IGNORECASE)
+e = re.findall(r'^.+/\b.+\b/\s*(--|-)', text, re.IGNORECASE)
+
+if len(d) > 0:
+    text = re.sub(r'\(.+\)\s*(--|-)', '', text)
+
+elif len(e) > 0:
+    text =  re.sub(r'^.+/\b.+\b/\s*-', '',text)
+
+
+print(text)
 
 doc = nlp(text)
 
@@ -94,11 +99,6 @@ for sent in doc.sentences:
     prows = []
 
     stence = sent.text
-
-    if n == 1:
-        d = re.findall(r'.+\(.+\).+(--|-)', stence, re.IGNORECASE)
-        if len(d) > 0:
-            stence = re.split('(--|-)', stence)[-1]
 
     # Check if you can add to dataset of people/firm/role
     # First, compile a list of people and organizations within the sentence.
@@ -178,7 +178,7 @@ for sent in doc.sentences:
         if len(y) > 0:
             sppl.append(per)
 
-            ############################################################################################
+    ############################################################################################
     # NOW YOU HAVE UPDATED YOUR RUNNING LISTS, TAG SENTENCES WITH PEOPLE AND QUOTES, IF APPLICABLE
     ############################################################################################
     ##################################
