@@ -25,7 +25,7 @@ dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\fina
 
 # combine the lead paragraph and the body of the article
 
-i = 182
+i = 203
 
 text = dfa['LP'][i] + " " + dfa['TD'][i]
 firm = dfa["Firm"][i]
@@ -81,7 +81,7 @@ mxpron = 2
 n = 1
 
 for sent in doc.sentences:
-    # reset key varaibles for each sentance:
+    # reset key variables for each sentence:
 
     quote = ""
     last = ""
@@ -226,7 +226,7 @@ for sent in doc.sentences:
                             qpref = "no"
                             comment = "pronoun"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
                         # If said equiv and quote, but no people or pronoun, check if organization listed, as in "BMW's spokesman said..."
                         elif len(k) == 0:
                             if len(orgs) == 1:
@@ -251,7 +251,7 @@ for sent in doc.sentences:
                                     qpref = "no"
                                     comment = "Org representative"
                                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                             comment, AN, date, source]
+                                                             comment, AN, date, source, stence]
                                 elif len(k) == 0:
                                     last = "NA"
                                     person = "NA"
@@ -265,7 +265,7 @@ for sent in doc.sentences:
                                     qpref = "no"
                                     comment = "from org, nondiscriptives"
                                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                             comment, AN, date, source]
+                                                             comment, AN, date, source, stence]
                             elif len(orgs) > 1:
                                 last = "NA"
                                 person = "NA"
@@ -293,7 +293,7 @@ for sent in doc.sentences:
                             qpref = "no"
                             comment = "from plural individuals"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
 
                         # If said equivalent, no people no quote and no plural, must be nondiscript said equivalent
                         elif len(m) == 0:
@@ -317,7 +317,7 @@ for sent in doc.sentences:
                                 qpref = "no"
                                 comment = "pronoun"
                                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN, date, source]
+                                                         comment, AN, date, source, stence]
                             # If siad equiv, but no person, no quote, not plural, and no pronoun, must be nondiscriptive so review
                             elif len(k) == 0:
                                 last = "misc"
@@ -330,7 +330,7 @@ for sent in doc.sentences:
                                 qpref = "no"
                                 comment = "Review - paraphrase from nondiscriptives"
                                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN, date, source]
+                                                         comment, AN, date, source, stence]
 
 
 
@@ -368,7 +368,7 @@ for sent in doc.sentences:
                             qpref = "no"
                             comment = "high accuracy"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
 
 
             # if said something and exactly one person from list, do stuff
@@ -447,7 +447,7 @@ for sent in doc.sentences:
                         qpref = "single"
                         comment = "high accuracy"
                         df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source]
+                                                 date, source, stence]
                     # Check if the name is actually inside the quote
                     # If so, the speaker should be the previous referenced person
                     elif len(q1) == 0:
@@ -468,7 +468,7 @@ for sent in doc.sentences:
                             qpref = "single"
                             comment = "Other person within the quote"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
 
                         elif len(s3) == 0:
                             q1a = re.findall(r'(' + end + r').+(' + stext + r').+(' + last + r')', stence,
@@ -499,7 +499,7 @@ for sent in doc.sentences:
                                 qpref = "single"
                                 comment = "high accuracy"
                                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN, date, source]
+                                                         comment, AN, date, source, stence]
 
 
             # If said equivalent but more than one person, do stuff:
@@ -533,7 +533,7 @@ for sent in doc.sentences:
                         qpref = "multiple"
                         comment = "review"
                         df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source]
+                                                 date, source, stence]
                     # check if a quote begins in this sentence:
                     elif len(s1) == 0:
                         q1a = re.findall(r'(' + last + r').+(' + stext + 'r).+(' + start + ')(.+)', stence,
@@ -569,7 +569,7 @@ for sent in doc.sentences:
                             qpref = "multiple"
                             comment = "review"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
                         elif len(q1) == 0:
                             quote = stence
                             qtype = "paraphrase"
@@ -577,7 +577,7 @@ for sent in doc.sentences:
                             qpref = "multiple"
                             comment = "review"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
 
 
         elif len(s) == 0:
@@ -648,7 +648,7 @@ for sent in doc.sentences:
                         qpref = "no"
                         comment = "high accuracy"
                         df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source]
+                                                 date, source, stence]
 
             ##################################
             # ONE OR MORE PEOPLE REFERENCED
@@ -712,7 +712,7 @@ for sent in doc.sentences:
                         qpref = "one or more"
                         comment = "high accuracy - prior person referenced"
                         df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source]
+                                                 date, source, stence]
                     # If there's no multi-sentence beginning here and no full quote, then it's just information with reference to 1+ people
                     elif len(q1) == 0:
                         for per in prows:
@@ -726,7 +726,7 @@ for sent in doc.sentences:
                             qpref = "one or more"
                             comment = "Just information concerning one or more people"
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                     AN, date, source]
+                                                     AN, date, source, stence]
 
     ##################################
     # NO PEOPLE IN CUMULATIVE LIST YET
@@ -820,7 +820,7 @@ for sent in doc.sentences:
                         comment = "statement by the firm"
                         quote = stence
                         df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source]
+                                                 date, source, stence]
                     elif len(orgs) > 1:
                         s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
                         last = "NA"
@@ -833,7 +833,7 @@ for sent in doc.sentences:
                         comment = "review - statement by one of multiple firms"
                         quote = stence
                         df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source]
+                                                 date, source, stence]
 
         elif len(ppl) > 1:
             # Very rare. If more than one person (without titles/orgs), include any organizations in the sentence and flag for review
