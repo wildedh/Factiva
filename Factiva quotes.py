@@ -25,7 +25,7 @@ dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\fina
 
 # combine the lead paragraph and the body of the article
 
-i = 203
+i = 178
 
 text = dfa['LP'][i] + " " + dfa['TD'][i]
 firm = dfa["Firm"][i]
@@ -41,7 +41,7 @@ misc = dfa["IPD"][i]
 industries = dfa["IN"][i]
 
 columns = ['sent', 'person', 'last', 'role', 'firm', 'quote', 'qtype', 'qsaid', 'qpref', 'comment', 'AN', 'date',
-           'source']
+           'source','sentence']
 df = pd.DataFrame(columns=columns)
 
 stext = r'said|n.t say|say|told|n.t tell\S+|tell\S+|assert\S+|n.t comment\S+|comment\S+|quote\S+|describ\S+|n.t communicat\S+|communicat\S+|articulat\S+|n.t divulg\S+|divulg\S+|noted|noting|espressed|recounted|suggested|explained'
@@ -62,9 +62,6 @@ if len(d) > 0:
 
 elif len(e) > 0:
     text =  re.sub(r'^.+/\b.+\b/\s*-', '',text)
-
-
-print(text)
 
 doc = nlp(text)
 
@@ -146,6 +143,14 @@ for sent in doc.sentences:
                             last = person.split()[-1]
                             role = pos[0]
                             firm = f
+                elif len(orgs)==0:
+                    if per in fulls:
+                        pass
+                    else:
+                        person = per
+                        last = person.split()[-1]
+                        role = pos[0]
+                        firm = df.loc[len(df.index) - 1].at['firm']
 
             # Combine last name, person, firm, and role, for that person.
             row = [last, person, firm, role]
@@ -411,7 +416,7 @@ for sent in doc.sentences:
                     qpref = "single"
                     comment = "high accuracy"
                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                             source]
+                                             source, stence]
 
                 # Check if the multiple sentence quote
                 elif len(s1) == 0:
@@ -611,7 +616,7 @@ for sent in doc.sentences:
                     qpref = "no"
                     comment = "Quote with at least two words inside"
                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                             source]
+                                             source, stence]
                 # Because said equivalent but no full quote, check if it's a beginning of multi-sentence quote
                 # If so, assume it would have to be from the most recent referenced person
                 # As in "he said", referring to the most recent person
@@ -677,7 +682,7 @@ for sent in doc.sentences:
                     qpref = "one or more"
                     comment = "Review, whether quote or something else, not clear"
                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                             source]
+                                             source, stence]
                 # Because said equivalent but no full quote, check if it's a beginning of multi-sentence quote
                 # If so, assume it would have to be from the most recent referenced person
                 # As in "he said", referring to the most recent person
@@ -738,8 +743,6 @@ for sent in doc.sentences:
 
         if len(ppl) == 1:
 
-            print(n, people)
-
             # Quote then person then said equivalent
             s1a = re.findall(r'(' + start + ')(.+)(' + end + ').+(' + per + r').+(' + stext + r')', stence,
                              re.IGNORECASE)
@@ -769,7 +772,7 @@ for sent in doc.sentences:
                 quote = re.sub(r'' + stext + '\Z', '', quote)
                 quote = re.sub(r'' + per + '', '', quote)
                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                         source]
+                                         source, stence]
             elif len(s1) == 0:
                 # check if a quote begins in this sentence:
                 q1a = re.findall(r'(' + per + ').+(' + stext + r').+(' + start + r')(.+)', stence, re.IGNORECASE)
@@ -806,7 +809,7 @@ for sent in doc.sentences:
                     quote = re.sub(r'' + stext + '\Z', '', quote)
                     comment = "review - no full profile of person yet"
                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                             source]
+                                             source, stence]
                 elif len(q1) == 0:
                     if len(orgs) == 1:
                         s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
@@ -848,28 +851,41 @@ for sent in doc.sentences:
                 qpref = "more than one"
                 comment = "review - no full profile of person yet"
                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                         source]
+                                         source, stence]
         elif len(ppl) == 0:
-            if len(orgs) > 1:
+            if len(orgs) == 1:
                 s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
-                last = "NA"
-                person = "NA"
-                firm = ', '.join(''.join(elems) for elems in orgs)
-                role = "NA"
-                qtype = "paraphrase"
-                qsaid = "yes"
-                qpref = "one - firm"
-                comment = "statement by the firm"
-                quote = stence
-                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                         source]
-
+                if len(s)>0:
+                    last = "NA"
+                    person = "NA"
+                    firm = orgs[0]
+                    role = "NA"
+                    qtype = "paraphrase"
+                    qsaid = "yes"
+                    qpref = "one - firm"
+                    comment = "statement by the firm"
+                    quote = stence
+                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
+                                             source, stence]
+                elif len(s)==1:
+                    last = "NA"
+                    person = "NA"
+                    firm = orgs[0]
+                    role = "NA"
+                    qtype = "information"
+                    qsaid = "yes"
+                    qpref = "one - firm"
+                    comment = "info about a firm"
+                    quote = stence
+                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
+                                             source, stence]
 
             elif len(orgs) > 1:
                 s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
+
                 last = "NA"
                 person = "NA"
-                firm = orgs[0]
+                firm = ''.join(''.join(elems) for elems in orgs)
                 role = "NA"
                 qtype = "paraphrase"
                 qsaid = "yes"
@@ -877,7 +893,7 @@ for sent in doc.sentences:
                 comment = "review - statement by one of multiple firms"
                 quote = stence
                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
-                                         source]
+                                         source, stence]
     else:
         pass
 
@@ -893,19 +909,10 @@ df
 # print(people)
 
 # TO DO:
-
-# replace all quotes stuff with end and start etc.
-# The multi-sentence stuff is weird. It adds up more sentences then it should.
-# save on Git
-# What about sentcences with multiple mini-quotes like'Musk called them "mind-bogglingly stupid" and suggested they should "never be able to sell"'
-# Create column with the full text in order to search that as a cover all.
-
-
-# Sentence 42 looks odd, as well.
-
-# Include context "when asked about...he said"
-# Remove the said equivalents from quotes. Solution: take the first or second group before .join
-# Create item list in pandas to add Person, Last, Role, Firm, Quote, Type, Said, Ref, Comments.
-
-# Drop repeat people if same name but different org (e.g., Carlos Ghosn)
 # Interviews
+# Analyst calls
+# #204 sent 1 first person with title, but 2 orgs?
+# #178 Sentence 42 looks odd, as well.
+
+
+
