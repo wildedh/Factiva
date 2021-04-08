@@ -24,7 +24,7 @@ nlp = stanza.Pipeline('en')
 dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
 # combine the lead paragraph and the body of the article
-i = 195
+i = 5
 
 
 
@@ -129,204 +129,9 @@ for sent in doc.sentences:
 
     # Next, if there are any people, see if should add to running People list
     # First check if just one person
-    if len(ppl)==1:
-        # see if the person's title is mentioned
-        # reset key variables each person reference
-        per = ppl[0]
-        last = ""
-        person = ""
-        firm = ""
-        role = ""
-
-        pos1a = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l1 + r'))', stence,
-                           re.IGNORECASE)
-        pos1b = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l2 + r'))', stence)
-        pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
-                           re.IGNORECASE)
-        pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence)
-        pos = pos1a + pos1b + pos2a + pos2b
-
-        # If the title is mentioned, move to next step
-
-
-
-        if len(pos) > 0:
-            # If there is an organization mentioned, check if near to reference of person
-            if len(orgs) == 1:
-                org = orgs[0]
-                org = org.replace(r"'s", "")
-                org1 = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + org + r'))',
-                                  stence, re.IGNORECASE)
-                org2 = re.findall(r'(' + org + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?' + per + r'\b', stence,
-                                  re.IGNORECASE)
-                f = org1 + org2
-                f = ''.join(''.join(elems) for elems in f)
-
-                # If yes,
-                if len(f) > 0:
-                    person = per
-                    last = person.split()[-1]
-                    r = pos[0]
-                    r = re.sub(r'(' + per + r')', '', r)
-                    role = re.sub(r',', '', r)
-                    firm = f
-            # If there's multiple orgs in the sentence:
-            elif len(orgs) > 1:
-
-                for o in orgs:
-                    #Check if inside quotes:
-                    s3 = re.findall(r'(' + start + r')(.+' + o + r'.+)(' + end + r')', stence, re.IGNORECASE)
-                    s3 = ''.join(''.join(elems) for elems in s3)
-
-                    if len(s3)==0:
-
-                        # Check if there is posession with one "'s" in the org
-                        o1 = re.findall(r''+o+r'\'s', stence, re.IGNORECASE)
-                        o2 = re.findall(r'\'s', o, re.IGNORECASE)
-
-                        og = o1 + o2
-
-                        if len(og) > 0:
-                            o1a = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
-                                            stence, re.IGNORECASE)
-                            o1b = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
-                                            stence)
-                            o2a = re.findall(r'\b(?:' + l1 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
-                                             stence, re.IGNORECASE)
-                            o2b = re.findall(r'\b(?:' + l2 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
-                                             stence)
-                            om = o1a + o1b + o2a + o2b
-
-                            if len(om) > 0:
-                                person = per
-                                last = person.split()[-1]
-                                r = pos[0]
-                                r = re.sub(r'(' + per + r')', '', r)
-                                role = re.sub(r',', '', r)
-                                o = o.replace(r"'s", "")
-                                firm = o
-
-
-                        # If not, check if there is posession with "whose"
-                        # Org then whose then title.
-                        elif len(og) == 0:
-
-                            o3 = re.findall(r"\b(?:" + o + r"\W+(?:\w+\W+){0," + str(mxorg1) + r"}?(whose\s+" + l1 + r"))",
-                                            stence, re.IGNORECASE)
-                            o4 = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l2 + r'))',
-                                            stence)
-                            m = o3 + o4
-
-                            e = ''.join(''.join(elems) for elems in m)
-                            if len(e) > 0:
-                                person = per
-                                last = person.split()[-1]
-                                r = pos[0]
-                                r = re.sub(r'(' + per + r')', '', r)
-                                role = re.sub(r',', '', r)
-                                firm = o
-
-
-                            # If not, check if org and title very near firm name
-                            elif len(e)==0:
-
-                                o5a = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
-                                                 stence, re.IGNORECASE)
-                                o5b = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
-                                                 stence)
-                                o6a = re.findall(r'\b(?:' + l1 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
-                                                 stence, re.IGNORECASE)
-                                o6b = re.findall(r'\b(?:' + l2 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
-                                                 stence)
-                                on = o5a + o5b + o6a + o6b
-
-
-
-                                if len(on) > 0:
-                                    o7 = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxorg) + r'}?(' + l1 + r'))',
-                                                    stence, re.IGNORECASE)
-                                    o8 = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxorg) + r'}?(' + l2 + r'))',
-                                                    stence)
-
-                                    o7a = re.findall(
-                                        r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
-                                        stence, re.IGNORECASE)
-                                    o7b = re.findall(
-                                        r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
-                                        stence)
-                                    o8a = re.findall(
-                                        r'\b(?:' + l1 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
-                                        stence, re.IGNORECASE)
-                                    o8b = re.findall(
-                                        r'\b(?:' + l2 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
-                                        stence)
-
-                                    ol = o7a + o7b + o8a + o8b
-                                    if len(ol) > 0:
-                                        person = per
-                                        last = person.split()[-1]
-                                        r = pos[0]
-                                        r = re.sub(r'(' + per + r')', '', r)
-                                        role = re.sub(r',', '', r)
-                                        firm = o
-
-
-            # If there's a titled person with no org, it may be the org in previous reference
-            # If a repeat person, this will be filtered out below.
-            elif len(orgs) == 0:
-                person = per
-                last = person.split()[-1]
-                r = pos[0]
-                r = re.sub(r'(' + per + r')', '', r)
-                role = re.sub(r',', '', r)
-                firm = df.loc[len(df.index) - 1].at['firm']
-        # If there's no leadership position, check if there is a person
-        # If there is and it says "of" something, add it to the people list
-        elif len(pos) == 0:
-            if len(ppl) == 1:
-                if len(orgs) > 0:
-                    for org in orgs:
-                        q = re.findall(r'.+' + ppl[0] + r'\s+of\s+' + org + r'', stence, re.IGNORECASE)
-                        if len(q) > 0:
-                            firm = org
-                            role = "NA"
-                            person = per
-                            last = person.split()[-1]
-                """
-                if len(orgs)==0:
-                    #look at the next sentence, which is n, as the index starts at 0 and n starts at 1
-                    c = doc.sentences[n]
-                    j = c.text
-                    x = re.findall(r'(' + start + ')(.+)(' + end + ')', j, re.IGNORECASE)
-                    if len(x)>0:
-                        y = re.sub(r'(' + start + ')(.+)(' + end + ')', '', x)
-                        d = nlp(y)
-                        for sent in d.sentences:
-                            for ent in c.ents:
-                                if ent.type == "PERSON":
-                                    break
-                """
-        # Combine last name, person, firm, and role, for that person.
-        row = [last, person, firm, role]
-
-        # If something in each key varable then add to the dataset of people
-        if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
-            # Filter out people who already were added to the list
-            if last in lsts:
-                pass
-            else:
-                people.append(row)
-                # remove duplicates
-                people = [list(x) for x in set(tuple(x) for x in people)]
-
-
-
-
-
-
 
     # Second check if just more than one person
-    elif len(ppl) > 1:
+    if len(ppl) > 0:
         for per in ppl:
             # see if the person's title is mentioned
             # reset key variables each person reference
@@ -336,13 +141,26 @@ for sent in doc.sentences:
             firm = ""
             role = ""
 
-            pos1a = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l1 + r'))', stence,
-                               re.IGNORECASE)
-            pos1b = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l2 + r'))', stence)
-            pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence,
-                               re.IGNORECASE)
-            pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence)
-            pos = pos1a + pos1b + pos2a + pos2b
+            if len(ppl)==1:
+                pos1a = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l1 + r'))', stence,
+                                   re.IGNORECASE)
+                pos1b = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l2 + r'))', stence)
+                pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
+                                   re.IGNORECASE)
+                pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence)
+                pos = pos1a + pos1b + pos2a + pos2b
+
+
+
+            else:
+                pos1a = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l1 + r'))', stence,
+                                   re.IGNORECASE)
+                pos1b = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l2 + r'))', stence)
+                pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence,
+                                   re.IGNORECASE)
+                pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence)
+                pos = pos1a + pos1b + pos2a + pos2b
+
 
             # If the title is mentioned, move to next step
             if len(pos) > 0:
@@ -352,9 +170,9 @@ for sent in doc.sentences:
                 if len(orgs) == 1:
                     org = orgs[0]
                     org = org.replace(r"'s", "")
-                    org1 = re.findall(r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + org + r'))',
+                    org1 = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + org + r'))',
                                       stence, re.IGNORECASE)
-                    org2 = re.findall(r'(' + org + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?' + per + r'\b', stence,
+                    org2 = re.findall(r'(' + org + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'\b)', stence,
                                       re.IGNORECASE)
                     f = org1 + org2
                     f = ''.join(''.join(elems) for elems in f)
@@ -363,11 +181,10 @@ for sent in doc.sentences:
                     if len(f) > 0:
                         person = per
                         last = person.split()[-1]
-                        if len(pos) == 1:
-                            r = pos[0]
+                        if len(pos[0]) == 2:
+                            r = ''.join(''.join(elems) for elems in pos[0])
                         else:
                             r = pos[0]
-                            r = ''.join(''.join(elems) for elems in r)
                         r = re.sub(r'(' + per + r')', '', r)
                         role = re.sub(r',', '', r)
                         firm = f
@@ -379,61 +196,64 @@ for sent in doc.sentences:
                         # Check if inside quotes:
                         s3 = re.findall(r'(' + start + r')(.+' + o + r'.+)(' + end + r')', stence, re.IGNORECASE)
                         s3 = ''.join(''.join(elems) for elems in s3)
-
+                        # If not, keep going
                         if len(s3) == 0:
 
-                            # Check if there is posession with one "'s" in the org
+                            # Check if there is possession with one "'s" in the org
                             o1 = re.findall(r'' + o + r'\'s', stence, re.IGNORECASE)
                             o2 = re.findall(r'\'s', o, re.IGNORECASE)
 
                             og = o1 + o2
 
                             if len(og) > 0:
-                                o1a = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
+                                o1a = re.findall(r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
                                                  stence, re.IGNORECASE)
-                                o1b = re.findall(r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                o1b = re.findall(r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
                                                  stence)
-                                o2a = re.findall(r'\b(?:' + l1 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                o2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                                  stence, re.IGNORECASE)
-                                o2b = re.findall(r'\b(?:' + l2 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                o2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                                  stence)
                                 om = o1a + o1b + o2a + o2b
+                                om = ''.join(''.join(elems) for elems in om)
+
+
 
                                 if len(om) > 0:
                                     person = per
                                     last = person.split()[-1]
-                                    if len(pos) == 1:
-                                        r = pos[0]
+                                    if len(pos[0]) == 2:
+                                        r = ''.join(''.join(elems) for elems in pos[0])
                                     else:
                                         r = pos[0]
-                                        r = ''.join(''.join(elems) for elems in r)
                                     r = re.sub(r'(' + per + r')', '', r)
                                     role = re.sub(r',', '', r)
                                     o = o.replace(r"'s", "")
                                     firm = o
 
 
-                            # If not, check if there is posession with "whose"
+                            # If not, check if there is possession with "whose"
                             # Org then whose then title.
                             elif len(og) == 0:
 
                                 o3 = re.findall(
-                                    r"\b(?:" + o + r"\W+(?:\w+\W+){0," + str(mxorg1) + r"}?(whose\s+" + l1 + r"))",
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l1 + r'))',
                                     stence, re.IGNORECASE)
                                 o4 = re.findall(
-                                    r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l2 + r'))',
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l2 + r'))',
                                     stence)
                                 m = o3 + o4
+
+
 
                                 e = ''.join(''.join(elems) for elems in m)
                                 if len(e) > 0:
                                     person = per
                                     last = person.split()[-1]
-                                    if len(pos) == 1:
-                                        r = pos[0]
+                                    if len(pos[0])==2:
+                                        r = ''.join(''.join(elems) for elems in pos[0])
                                     else:
                                         r = pos[0]
-                                        r = ''.join(''.join(elems) for elems in r)
                                     r = re.sub(r'(' + per + r')', '', r)
                                     role = re.sub(r',', '', r)
                                     firm = o
@@ -443,43 +263,46 @@ for sent in doc.sentences:
                                 elif len(e) == 0:
 
                                     o5a = re.findall(
-                                        r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
+                                        r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
                                         stence, re.IGNORECASE)
                                     o5b = re.findall(
-                                        r'\b(?:' + o + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                        r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
                                         stence)
                                     o6a = re.findall(
-                                        r'\b(?:' + l1 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                        r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                         stence, re.IGNORECASE)
                                     o6b = re.findall(
-                                        r'\b(?:' + l2 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                        r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                         stence)
                                     on = o5a + o5b + o6a + o6b
+
+                                    on = ''.join(''.join(elems) for elems in on)
 
                                     if len(on) > 0:
 
                                         o7a = re.findall(
-                                            r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
+                                            r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
                                             stence, re.IGNORECASE)
                                         o7b = re.findall(
-                                            r'\b(?:' + per + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                            r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
                                             stence)
                                         o8a = re.findall(
-                                            r'\b(?:' + l1 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
+                                            r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
                                             stence, re.IGNORECASE)
                                         o8b = re.findall(
-                                            r'\b(?:' + l2 + r'\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
+                                            r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
                                             stence)
 
                                         ol = o7a + o7b + o8a + o8b
+
+
                                         if len(ol) > 0:
                                             person = per
                                             last = person.split()[-1]
-                                            if len(pos) == 1:
-                                                r = pos[0]
+                                            if len(pos[0]) == 2:
+                                                r = ''.join(''.join(elems) for elems in pos[0])
                                             else:
                                                 r = pos[0]
-                                                r = ''.join(''.join(elems) for elems in r)
                                             r = re.sub(r'(' + per + r')', '', r)
                                             role = re.sub(r',', '', r)
                                             firm = o
@@ -490,11 +313,10 @@ for sent in doc.sentences:
                 elif len(orgs) == 0:
                     person = per
                     last = person.split()[-1]
-                    if len(pos) == 1:
-                        r = pos[0]
+                    if len(pos[0]) == 2:
+                        r = ''.join(''.join(elems) for elems in pos[0])
                     else:
                         r = pos[0]
-                        r = ''.join(''.join(elems) for elems in r)
                     r = re.sub(r'(' + per + r')', '', r)
                     role = re.sub(r',', '', r)
                     firm = df.loc[len(df.index) - 1].at['firm']
@@ -536,18 +358,6 @@ for sent in doc.sentences:
                     people.append(row)
                     # remove duplicates
                     people = [list(x) for x in set(tuple(x) for x in people)]
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1377,6 +1187,7 @@ df
 # Should add any information options if no 'people' but firm or person?
 # Non-business edge cases:
 # #2 - crazy edge case
+# #5 - check out sentence 18 and maybe 12
 # #6 negotiator is attributed wrong firm because no firm (it does say Japanese before if could use that part os speach maybe?
 # 11 - small, didn't assign role of "House Speaker". Not a big deal
 # 14 - Name with not title or org in first sentence. Second sentence is quote with the person's
