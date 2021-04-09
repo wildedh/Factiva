@@ -24,7 +24,7 @@ nlp = stanza.Pipeline('en')
 dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
 # combine the lead paragraph and the body of the article
-i = 205
+i = 20
 
 
 
@@ -48,7 +48,7 @@ df = pd.DataFrame(columns=columns)
 
 stext = r'said|n.t say|say|told|n.t tell\S+|tell\S+|assert\S+|according\s+to|n.t comment\S+|comment\S+|quote\S+' \
         r'|describ\S+|n.t communicat\S+|communicat\S+|articulat\S+|n.t divulg\S+|divulg\S+|noted|noting|espressed' \
-        r'|recounted|suggested|explained|added|acknowledged|stating|stated|protested|fumed|recounts|asks|asked'
+        r'|recounted|suggested|\bexplained\b|\badded\b|acknowledged|\bstating\b|\bstated\b|\bprotested\b|\bfumed\b|recounts|\basks\b|\basked\b'
 
 l1 = r'executive\s+vice\s+president\s+of\s\S+|executive\s+vice-president\s+of\s\S+|' \
      r'senior\s+vice\s+president\b\s+of|\S+\s+executive\b\s+of\s+the\s+\S+' \
@@ -576,6 +576,107 @@ for sent in doc.sentences:
                     people.append(row)
                     # remove duplicates
                     people = [list(x) for x in set(tuple(x) for x in people)]
+
+    elif len(ppl)==0:
+        if len(orgs)==1:
+            o = orgs[0]
+            o5a = re.findall(
+                r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
+                stz4, re.IGNORECASE)
+            o5b = re.findall(
+                r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                stz4, re.IGNORECASE)
+            o5c = re.findall(
+                r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l3 + r'))',
+                stz4, re.IGNORECASE)
+            o5d = re.findall(
+                r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l4 + r'))',
+                stz4, re.IGNORECASE)
+            o5e = re.findall(
+                r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l5 + r'))',
+                stz4)
+            o6a = re.findall(
+                r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                stz4, re.IGNORECASE)
+            o6b = re.findall(
+                r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                stz4, re.IGNORECASE)
+            o6c = re.findall(
+                r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                stz4, re.IGNORECASE)
+            o6d = re.findall(
+                r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                stz4, re.IGNORECASE)
+            o6e = re.findall(
+                r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                stz4)
+            m = o5a + o5b + o5c + o5d + o5e + o6a + o6b + o6c + o6d + o6e
+
+            on = ''.join(''.join(elems) for elems in m)
+
+
+
+            # If there is a role and org close together, then check if a single person in the next sentence:
+            if len(on)>0:
+                pz = []
+                j = doc.sentences[n]
+                b = j.text
+                #### Filter out any quotes, then use that as the reference for stz4 below
+                # Must stip the the sentence of any quotes in order to arrive at appropriate orgs, people, and products
+                # First, remove any information within quotes:
+                sty1 = re.sub(r'(' + start + r').+(' + end + r')', ' ', b)
+                # Second, remove information in beginning of multi-sentence quotes
+                # the start quote would have a space before the quote
+                sty2 = re.sub(r'([:|,])\s+(' + start + r')\S.+$', ' ', sty1)
+                # Third, remove cases in which the quote begins in the sentance and doesn't end.
+                sty3 = re.sub(r'^(' + start + r')\S.+$', ' ', sty2)
+                # Last, remove information at the end of multi-sentence quotes
+                # the end quote would have a space after the quote
+                sty4 = re.sub(r'^.+(' + end + r')\s+', ' ', sty3)
+
+                #Check if there are any people in the non-quote portion of the sentence:
+                for ent in j.ents:
+                        if ent.type == "PERSON":
+                            z = re.findall(r'' + ent.text + r'', sty4)
+                            if len(z) > 0:
+                                #This will add the person and last name to these lists
+                                pz.append(ent.text)
+
+                # If there's just one person, assign
+                if len(pz)==1:
+                    #Add to the ppl and lasts lists
+                    ppl.append(pz[0])
+                    l = pz[0].split()[-1]
+                    lasts.append(l)
+                    #Create a profile
+                    person = pz[0]
+                    last = person.split()[-1]
+                    firm = o
+                    #Add the role by iteratively going through the hierarchy of titles
+                    for i in m:
+                        j = ''.join(''.join(elems) for elems in i)
+                        role = re.sub(r'' + firm + r'', '', j)
+                        role = re.sub(r',', '', role)
+                        if len(role) > 0:
+                            break
+
+
+
+
+
+                    # Combine last name, person, firm, and role, for that person.
+                    row = [last, person, firm, role, n]
+
+                    # If something in each key varable then add to the dataset of people
+                    if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
+                        # Filter out people who already were added to the list
+                        if last in lsts:
+                            pass
+                        else:
+                            people.append(row)
+                            # remove duplicates
+                            people = [list(x) for x in set(tuple(x) for x in people)]
+
 
 
 
@@ -1709,7 +1810,7 @@ for sent in doc.sentences:
                                 qtype = "information"
                                 qsaid = "no"
                                 qpref = "yes"
-                                comment = "info about an individual"
+                                comment = "review potentially info about an individual"
                                 quote = stence
                                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
                                                          comment, AN, date,
