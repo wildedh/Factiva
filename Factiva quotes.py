@@ -24,7 +24,7 @@ nlp = stanza.Pipeline('en')
 dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
 # combine the lead paragraph and the body of the article
-i = 5
+i = 6
 
 
 
@@ -33,10 +33,7 @@ i = 5
 
 
 text = dfa['LP'][i] + " " + dfa['TD'][i]
-firm = dfa["Firm"][i]
-vertexid = dfa["vertex.id"][i]
-start = dfa["start"][i]
-end = dfa["end"][i]
+
 AN = dfa["AN"][i]
 date = dfa["PD"][i]
 source = dfa["SN"][i]
@@ -51,21 +48,29 @@ df = pd.DataFrame(columns=columns)
 
 stext = r'said|n.t say|say|told|n.t tell\S+|tell\S+|assert\S+|according\s+to|n.t comment\S+|comment\S+|quote\S+' \
         r'|describ\S+|n.t communicat\S+|communicat\S+|articulat\S+|n.t divulg\S+|divulg\S+|noted|noting|espressed' \
-        r'|recounted|suggested|explained|added'
+        r'|recounted|suggested|explained|added|acknowledged|stating|stated|protested|fumed|recounts|asks|asked'
 
-l1 = r'vice chair\S+|chair\S+|\S+\s+head\s+of\s\S+|chair\S+\s+and\s+\S+\s+head\b|boss\b|' \
-     r'executive\s+vice\s+president\s+of\s\S+|executive\s+vice\s+president\b|executive\s+vice-president\b|' \
-     r'executive\s+vice\s+president\b|senior\s+vice-president\b|senior\s+vice\s+president\b\s+of|' \
-     r'senior\s+vice\s-president\b\s+of\s+\S\|sr\.\s+vice\s-president\b\s+of\s+\S|\vice\s+president\b|vice-president|' \
-     r'president\b|general\s+manager\b|sr\.\s+vice\s president\b\s+of\s+\S|sr\.\s+vice\s president|' \
-     r'senior\s+manager\b|sr\s+manager\b|manager\b|vp\s+of\s+\S+|vp\b|director\s+of\s+\S+|director\b|chief.+officer|' \
-     r' president\s+and\s+\S+|\S+\s+executive\b\s+of\s+the\s+\S+|chief\s+executive\b\s+of\s+|chief\s+executive\b|' \
+l1 = r'executive\s+vice\s+president\s+of\s\S+|executive\s+vice-president\s+of\s\S+|' \
+     r'senior\s+vice\s+president\b\s+of|\S+\s+executive\b\s+of\s+the\s+\S+' \
+
+l2 = r'executive\s+vice\s+president|executive\s+vice-president|sr\.\s+vice\s+president\b\s+of\s+\S|' \
+     r'\S+\s+head\s+of\s\S+|chair\S+\s+and\s+\S+\s+head\b|senior\s+vice-president\b|' \
+     r'senior\s+director\s+of\s+\S+|chief.+officer|president\s+and\s+\S+' \
+
+l3 = r'vice\s+chair\S+|vice\s+president|vice-president|senior\s+manager|sr.*manager|senior\s+director|' \
+     r'chief\s+executive|senior\s+manager|sr.*manager|vp\s+of\s+\S+|global\+director|senior\s+director|' \
+     r'sr.*director|vice minister'
+
+l4 = r'president|chair\S+|director|manager|vp|'\
      r'banker\b|specialist\b|accountant\b|journalist\b|reporter\b|analyst\b|consultant\b|negotiator\b|' \
-     r'governor\b|congress\S+|house\s+speaker|senator|senior\s+fellow|fellow'
+     r'governor\b|congress\S+|house\s+speaker|senator|senior\s+fellow|fellow|undersecretary|' \
+     r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|executive\b|aide|pilot|professor|' \
+     r'attorney|minister'
 
-l2 = r'C.O\b'
-pron = r'he|she'
-plurals = r'analysts|bankers|consultants|executives|management|participants'
+l5 = r'\bC.O\b'
+
+pron = r'\bhe\b|\bshe\b'
+plurals = r'analysts|bankers|consultants|executives|management|participants|officials'
 rep = r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|executive\b'
 start = r'\"|\“|\`\`'
 end = r'\"|\”|\'\''
@@ -85,6 +90,7 @@ doc = nlp(text)
 
 people = []
 sppl = []
+
 fulls = []
 lsts = []
 
@@ -114,24 +120,72 @@ for sent in doc.sentences:
     lasts = []
     orgs = []
     prows = []
+    prod = []
+
 
     stence = sent.text
 
+    # Must stip the the sentence of any quotes in order to arrive at appropriate orgs, people, and products
+    # First, remove any information within quotes:
+    stz1 = re.sub(r'(' + start + r').+(' + end + r')', ' ', stence)
+    # Second, remove information in beginning of multi-sentence quotes
+    # the start quote would have a space before the quote
+    stz2 = re.sub(r'([:|,])\s+(' + start + r')\S.+$', ' ', stz1)
+    # Third, remove cases in which the quote begins in the sentance and doesn't end.
+    stz3 = re.sub(r'^(' + start + r')\S.+$', ' ', stz2)
+    # Last, remove information at the end of multi-sentence quotes
+    # the end quote would have a space after the quote
+    stz4 = re.sub(r'^.+(' + end + r')\s+', ' ', stz3)
+
+
+
+
     # Check if you can add to dataset of people/firm/role
-    # First, compile a list of people and organizations within the sentence.
+    # First, compile a list of people and organizations and products iteratively within the sentence.
+    # You use products list in the orgs list so need to run them sep.
     for ent in sent.ents:
         if ent.type == "PERSON":
-            ppl.append(ent.text)
-            l = ent.text.split()[-1]
-            lasts.append(l)
+            z = re.findall(r'' + ent.text + r'', stz4)
+            if len(z)>0:
+                ppl.append(ent.text)
+                l = ent.text.split()[-1]
+                lasts.append(l)
+    # Next the products, to be used for the orgs
+    for ent in sent.ents:
+        if ent.type == "PRODUCT":
+            z = re.findall(r'' + ent.text + r'', stz4)
+            if len(z) > 0:
+                prod.append(ent.text)
+    #Finally, the orgs
+    for ent in sent.ents:
         if ent.type == "ORG":
-            orgs.append(ent.text)
+            z = re.findall(r'' + ent.text + r'', stz4)
+            if len(z) > 0:
+                #don't include acronyms
+                a = re.findall(r'\(\s*' + ent.text + r'\s*\)', stence)
+                if len(a)==0:
+                    # Not an acronym so see if any products in sentence:
+                    # If not, add the org to the list
+                    if len(prod)==0:
+                        orgs.append(ent.text)
+                    # If not, check if it's not just a brand name with a product after it like Toyota SRV
+                    else:
+                        d = ""
+                        for p in prod:
+                            c = re.findall(r'' + ent.type + r'\s+' + p + r'', stence)
+                            d = d + str(c)
+                        f = ''.join(''.join(elems) for elems in d)
+                        if len(f)==0:
+                            orgs.append(ent.text)
+
+
 
     # Next, if there are any people, see if should add to running People list
     # First check if just one person
-
     # Second check if just more than one person
     if len(ppl) > 0:
+
+
         for per in ppl:
             # see if the person's title is mentioned
             # reset key variables each person reference
@@ -141,39 +195,79 @@ for sent in doc.sentences:
             firm = ""
             role = ""
 
+
             if len(ppl)==1:
-                pos1a = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l1 + r'))', stence,
-                                   re.IGNORECASE)
-                pos1b = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l2 + r'))', stence)
-                pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
-                                   re.IGNORECASE)
-                pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence)
-                pos = pos1a + pos1b + pos2a + pos2b
+                #If exactly 1 org, not matter where the person is in proximity of title/role
+                if len(orgs)==1:
+                    pos1a = re.findall(r'(' + per + r').+(' + l1 + r')', stence,re.IGNORECASE)
+                    pos1b = re.findall(r'(' + per + r').+(' + l2 + r')', stence, re.IGNORECASE)
+                    pos1c = re.findall(r'(' + per + r').+(' + l3 + r')', stence, re.IGNORECASE)
+                    pos1d = re.findall(r'(' + per + r').+(' + l4 + r')', stence, re.IGNORECASE)
+                    pos1e = re.findall(r'(' + per + r').+(' + l5 + r')',stence)
+                    pos2a = re.findall(r'(' + l1 + r').+(' + per + r')', stence, re.IGNORECASE)
+                    pos2b = re.findall(r'(' + l2 + r').+(' + per + r')', stence, re.IGNORECASE)
+                    pos2c = re.findall(r'(' + l3 + r').+(' + per + r')', stence, re.IGNORECASE)
+                    pos2d = re.findall(r'(' + l4 + r').+(' + per + r')', stence, re.IGNORECASE)
+                    pos2e = re.findall(r'(' + l5 + r').+(' + per + r')', stence)
+                    pos = pos1a + pos1b + pos1c + pos1d + pos1e + pos2a + pos2b + pos2c + pos2d + pos2e
+
+                #If either 0 or >1 orgs, do this:
+                else:
+                    pos1a = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l1 + r'))', stence,
+                                       re.IGNORECASE)
+                    pos1b = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l2 + r'))', stence,
+                                       re.IGNORECASE)
+                    pos1c = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l3 + r'))', stence,
+                                       re.IGNORECASE)
+                    pos1d = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l4 + r'))', stence,
+                                       re.IGNORECASE)
+                    pos1e = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + l5 + r'))', stence)
+                    pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
+                                       re.IGNORECASE)
+                    pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
+                                       re.IGNORECASE)
+                    pos2c = re.findall(r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
+                                       re.IGNORECASE)
+                    pos2d = re.findall(r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence,
+                                       re.IGNORECASE)
+                    pos2e = re.findall(r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'))', stence)
+                    pos = pos1a + pos1b + pos1c + pos1d + pos1e + pos2a + pos2b + pos2c + pos2d + pos2e
 
 
-
+            #Then by definition, must be >1 people
             else:
                 pos1a = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l1 + r'))', stence,
                                    re.IGNORECASE)
-                pos1b = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l2 + r'))', stence)
+                pos1b = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l2 + r'))', stence,
+                                   re.IGNORECASE)
+                pos1c = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l3 + r'))', stence,
+                                   re.IGNORECASE)
+                pos1d = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l4 + r'))', stence,
+                                   re.IGNORECASE)
+                pos1e = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + l5 + r'))', stence)
                 pos2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence,
                                    re.IGNORECASE)
-                pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence)
-                pos = pos1a + pos1b + pos2a + pos2b
+                pos2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence,
+                                   re.IGNORECASE)
+                pos2c = re.findall(r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence,
+                                   re.IGNORECASE)
+                pos2d = re.findall(r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence,
+                                   re.IGNORECASE)
+                pos2e = re.findall(r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(mxlds) + r'}?(' + per + r'))', stence)
+                pos = pos1a + pos1b + pos1c + pos1d + pos1e + pos2a + pos2b + pos2c + pos2d + pos2e
+
+
 
 
             # If the title is mentioned, move to next step
             if len(pos) > 0:
 
-
                 # If there is an organization mentioned, check if near to reference of person
                 if len(orgs) == 1:
                     org = orgs[0]
                     org = org.replace(r"'s", "")
-                    org1 = re.findall(r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + org + r'))',
-                                      stence, re.IGNORECASE)
-                    org2 = re.findall(r'(' + org + r')\W+(?:\w+\W+){0,' + str(mxld) + r'}?(' + per + r'\b)', stence,
-                                      re.IGNORECASE)
+                    org1 = re.findall(r'(' + per + r').+(' + org + r')', stence, re.IGNORECASE)
+                    org2 = re.findall(r'(' + org + r').+(' + per + r')', stence, re.IGNORECASE)
                     f = org1 + org2
                     f = ''.join(''.join(elems) for elems in f)
 
@@ -181,14 +275,16 @@ for sent in doc.sentences:
                     if len(f) > 0:
                         person = per
                         last = person.split()[-1]
-                        if len(pos[0]) == 2:
-                            r = ''.join(''.join(elems) for elems in pos[0])
-                        else:
-                            r = pos[0]
-                        r = re.sub(r'(' + per + r')', '', r)
-                        role = re.sub(r',', '', r)
+                        role = ""
+                        for i in pos:
+                            j = ''.join(''.join(elems) for elems in i)
+                            role = re.sub(r'' + per + r'', '', j)
+                            role = re.sub(r',', '', role)
+                            if len(role) > 0:
+                                break
+                        f = re.sub(r'(' + per + r')', '', f)
                         firm = f
-                # If there's multiple orgs in the sentence:
+                # Multiple orgs in sentence
                 elif len(orgs) > 1:
 
                     for o in orgs:
@@ -208,26 +304,43 @@ for sent in doc.sentences:
                             if len(og) > 0:
                                 o1a = re.findall(r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l1 + r'))',
                                                  stence, re.IGNORECASE)
-                                o1b = re.findall(r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                o1b = re.findall(
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                    stence, re.IGNORECASE)
+                                o1c = re.findall(
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l3 + r'))',
+                                    stence, re.IGNORECASE)
+                                o1d = re.findall(
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l4 + r'))',
+                                    stence, re.IGNORECASE)
+                                o1e = re.findall(r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l5 + r'))',
                                                  stence)
                                 o2a = re.findall(r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                                  stence, re.IGNORECASE)
-                                o2b = re.findall(r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                o2b = re.findall(
+                                    r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                    stence, re.IGNORECASE)
+                                o2c = re.findall(
+                                    r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                    stence, re.IGNORECASE)
+                                o2d = re.findall(
+                                    r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                    stence, re.IGNORECASE)
+                                o2e = re.findall(r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                                  stence)
-                                om = o1a + o1b + o2a + o2b
-                                om = ''.join(''.join(elems) for elems in om)
+                                os = o1a + o1b + o1c + o1d + o1e + o2a + o2b +o2c + o2d +o2e
+                                om = ''.join(''.join(elems) for elems in os)
 
-
-
-                                if len(om) > 0:
+                                if len(os) > 0:
                                     person = per
                                     last = person.split()[-1]
-                                    if len(pos[0]) == 2:
-                                        r = ''.join(''.join(elems) for elems in pos[0])
-                                    else:
-                                        r = pos[0]
-                                    r = re.sub(r'(' + per + r')', '', r)
-                                    role = re.sub(r',', '', r)
+                                    role = ""
+                                    for i in os:
+                                        j = ' '.join(''.join(elems) for elems in i)
+                                        role = re.sub(r'' + o + r'', '', j)
+                                        role = re.sub(r',', '', role)
+                                        if len(role) > 0:
+                                            break
                                     o = o.replace(r"'s", "")
                                     firm = o
 
@@ -236,26 +349,34 @@ for sent in doc.sentences:
                             # Org then whose then title.
                             elif len(og) == 0:
 
-                                o3 = re.findall(
+                                o3a = re.findall(
                                     r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l1 + r'))',
                                     stence, re.IGNORECASE)
-                                o4 = re.findall(
+                                o3b = re.findall(
                                     r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l2 + r'))',
+                                    stence, re.IGNORECASE)
+                                o3c = re.findall(
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l3 + r'))',
+                                    stence, re.IGNORECASE)
+                                o3d = re.findall(
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l4 + r'))',
+                                    stence, re.IGNORECASE)
+                                o3e = re.findall(
+                                    r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(whose\s+' + l5 + r'))',
                                     stence)
-                                m = o3 + o4
-
-
+                                m = o3a + o3b + o3c + o3d + o3e
 
                                 e = ''.join(''.join(elems) for elems in m)
                                 if len(e) > 0:
                                     person = per
                                     last = person.split()[-1]
-                                    if len(pos[0])==2:
-                                        r = ''.join(''.join(elems) for elems in pos[0])
-                                    else:
-                                        r = pos[0]
-                                    r = re.sub(r'(' + per + r')', '', r)
-                                    role = re.sub(r',', '', r)
+                                    role = ""
+                                    for i in m:
+                                        j = ''.join(''.join(elems) for elems in i)
+                                        role = re.sub(r'' + o + r'', '', j)
+                                        role = re.sub(r',', '', role)
+                                        if len(role) > 0:
+                                            break
                                     firm = o
 
 
@@ -267,16 +388,34 @@ for sent in doc.sentences:
                                         stence, re.IGNORECASE)
                                     o5b = re.findall(
                                         r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                        stence, re.IGNORECASE)
+                                    o5c = re.findall(
+                                        r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l3 + r'))',
+                                        stence, re.IGNORECASE)
+                                    o5d = re.findall(
+                                        r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l4 + r'))',
+                                        stence, re.IGNORECASE)
+                                    o5e = re.findall(
+                                        r'\b(?:(' + o + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l5 + r'))',
                                         stence)
                                     o6a = re.findall(
                                         r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                         stence, re.IGNORECASE)
                                     o6b = re.findall(
                                         r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                        stence, re.IGNORECASE)
+                                    o6c = re.findall(
+                                        r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                        stence, re.IGNORECASE)
+                                    o6d = re.findall(
+                                        r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
+                                        stence, re.IGNORECASE)
+                                    o6e = re.findall(
+                                        r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + o + r'))',
                                         stence)
-                                    on = o5a + o5b + o6a + o6b
+                                    m = o5a + o5b + o5c + o5d +o5e + o6a + o6b + o6c + o6d + o6e
 
-                                    on = ''.join(''.join(elems) for elems in on)
+                                    on = ''.join(''.join(elems) for elems in m)
 
                                     if len(on) > 0:
 
@@ -285,41 +424,63 @@ for sent in doc.sentences:
                                             stence, re.IGNORECASE)
                                         o7b = re.findall(
                                             r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l2 + r'))',
+                                            stence, re.IGNORECASE)
+                                        o7c = re.findall(
+                                            r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l3 + r'))',
+                                            stence, re.IGNORECASE)
+                                        o7d = re.findall(
+                                            r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l4 + r'))',
+                                            stence, re.IGNORECASE)
+                                        o7e = re.findall(
+                                            r'\b(?:(' + per + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + l5 + r'))',
                                             stence)
                                         o8a = re.findall(
                                             r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
                                             stence, re.IGNORECASE)
                                         o8b = re.findall(
                                             r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
+                                            stence, re.IGNORECASE)
+                                        o8c = re.findall(
+                                            r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
+                                            stence, re.IGNORECASE)
+                                        o8d = re.findall(
+                                            r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
+                                            stence, re.IGNORECASE)
+                                        o8e = re.findall(
+                                            r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + per + r'))',
                                             stence)
 
-                                        ol = o7a + o7b + o8a + o8b
+                                        m = o7a + o7b +o7c + o7d + o7e + o8a + o8b + o8c + o8d + o8e
 
+                                        ol = ' '.join(''.join(elems) for elems in m)
 
                                         if len(ol) > 0:
                                             person = per
                                             last = person.split()[-1]
-                                            if len(pos[0]) == 2:
-                                                r = ''.join(''.join(elems) for elems in pos[0])
-                                            else:
-                                                r = pos[0]
-                                            r = re.sub(r'(' + per + r')', '', r)
-                                            role = re.sub(r',', '', r)
+                                            role = ""
+                                            for i in pos:
+                                                j = ''.join(''.join(elems) for elems in i)
+                                                role = re.sub(r'' + per + r'', '', j)
+                                                role = re.sub(r',', '', role)
+                                                if len(role) > 0:
+                                                    break
                                             firm = o
 
 
                 # If there's a titled person with no org, it may be the org in previous reference
                 # If a repeat person, this will be filtered out below.
                 elif len(orgs) == 0:
-                    person = per
-                    last = person.split()[-1]
-                    if len(pos[0]) == 2:
-                        r = ''.join(''.join(elems) for elems in pos[0])
-                    else:
-                        r = pos[0]
-                    r = re.sub(r'(' + per + r')', '', r)
-                    role = re.sub(r',', '', r)
-                    firm = df.loc[len(df.index) - 1].at['firm']
+                    if len(df)>0:
+                        person = per
+                        last = person.split()[-1]
+                        role = ""
+                        for i in pos:
+                            j = ''.join(''.join(elems) for elems in i)
+                            role = re.sub(r'' + per + r'', '', j)
+                            role = re.sub(r',', '', role)
+                            if len(role) > 0:
+                                break
+                        firm = df.loc[len(df.index) - 1].at['firm']
             # If there's no leadership position, check if there is a person
             # If there is and it says "of" something, add it to the people list
             elif len(pos) == 0:
@@ -347,7 +508,7 @@ for sent in doc.sentences:
                                         break
                     """
             # Combine last name, person, firm, and role, for that person.
-            row = [last, person, firm, role]
+            row = [last, person, firm, role, n]
 
             # If something in each key varable then add to the dataset of people
             if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
@@ -362,9 +523,6 @@ for sent in doc.sentences:
 
 
 
-
-
-
     # Running list of full names of People list of lists
     fulls = [per[1] for per in people]
     lsts = [per[0] for per in people]
@@ -375,7 +533,7 @@ for sent in doc.sentences:
             last = per[0]
             m = re.findall(r'\b' + last + r'\b', stence, re.IGNORECASE)
             if len(m) > 0:
-                prow = [per[0], per[1], per[2], per[3]]
+                prow = [per[0], per[1], per[2], per[3], n]
                 prows.append(prow)
 
     # Cumulative list of people from people list referenced in sentences
@@ -383,7 +541,10 @@ for sent in doc.sentences:
     for per in people:
         y = re.findall(r'\b' + per[0] + r'\b', stence, re.IGNORECASE)
         if len(y) > 0:
+            per[4] = n
             sppl.append(per)
+
+
 
     ############################################################################################
     # NOW YOU HAVE UPDATED YOUR RUNNING LISTS, TAG SENTENCES WITH PEOPLE AND QUOTES, IF APPLICABLE
@@ -408,7 +569,7 @@ for sent in doc.sentences:
 
                     x1 = re.findall(r'(' + start + ')(.+)(' + end + ')', stence, re.IGNORECASE)
                     x1 = ''.join(''.join(elems) for elems in x1)
-                    x1 = re.sub(r'[' + qs + r']', '', x1)
+                    x1 = re.sub(r'(' + qs + r')', '', x1)
 
                     if len(x1) > 0:
                         # if there is a said equivalent and quote but no person, check if pronoun near said equivalent
@@ -418,12 +579,10 @@ for sent in doc.sentences:
                                         stence, re.IGNORECASE)
                         k = k1 + k2
                         k = ''.join(''.join(elems) for elems in k)
-                        k = re.sub(r'[' + qs + r']', '', k)
+                        k = re.sub(r'(' + qs + r')', '', k)
                         if len(k) > 0:
 
                             quote = x1
-                            quote = re.sub(r'^' + stext + '.+', '', quote)
-                            quote = re.sub(r'' + stext + '\Z', '', quote)
                             last = sppl[-1][0]
                             person = sppl[-1][1]
                             firm = sppl[-1][2]
@@ -443,16 +602,14 @@ for sent in doc.sentences:
                                 k4 = re.findall(r'' + rep + r'.+(' + org + r')', stence, re.IGNORECASE)
                                 k = k3 + k4
                                 k = ''.join(''.join(elems) for elems in k)
-                                k = re.sub(r'[' + qs + r']', '', k)
+                                k = re.sub(r'(' + qs + r')', '', k)
                                 if len(k) > 0:
                                     last = "NA"
                                     # The person would be the representative's reference, removing the org name
-                                    person = re.sub(r'' + org + '', '', k)
+                                    person = "NA"
                                     firm = org
-                                    role = "NA"
+                                    role = re.sub(r'' + org + '', '', k)
                                     quote = x1
-                                    quote = re.sub(r'^' + stext + '.+', '', quote)
-                                    quote = re.sub(r'' + stext + '\Z', '', quote)
                                     qtype = "single sentence quote"
                                     qsaid = "yes"
                                     qpref = "no"
@@ -465,8 +622,6 @@ for sent in doc.sentences:
                                     firm = orgs[0]
                                     role = "NA"
                                     quote = x1
-                                    quote = re.sub(r'^' + stext + '.+', '', quote)
-                                    quote = re.sub(r'' + stext + '\Z', '', quote)
                                     qtype = "single sentence quote"
                                     qsaid = "yes"
                                     qpref = "no"
@@ -479,19 +634,76 @@ for sent in doc.sentences:
                                 firm = ''.join(''.join(elems) for elems in orgs)
                                 role = "NA"
                                 quote = x1
-                                quote = re.sub(r'^' + stext + '.+', '', quote)
-                                quote = re.sub(r'' + stext + '\Z', '', quote)
                                 qtype = "Information - non-discript single sentence quote"
                                 qsaid = "yes"
                                 qpref = "no"
                                 comment = "Review - from nondiscriptives"
+                            elif len(orgs)==0:
+                                # if there is a said equivalent and quote but no person, no org, and no pronoun
+                                # near said equivalent, check if pronoun further back from said equiv.
+                                k1 = re.findall(r'(' + stext + r').+(' + pron + r').+(' + start + r').+(' + end + r')',
+                                    stence, re.IGNORECASE)
+                                k2 = re.findall(r'(' + pron + r').+(' + stext + r').+(' + start + r').+(' + end + r')',
+                                                stence, re.IGNORECASE)
+                                k3 = re.findall(r'(' + start+ r').+(' + end + r').+(' + pron + r').+(' + stext + r')',
+                                                stence, re.IGNORECASE)
+                                k4 = re.findall(r'(' + start + r').+(' + end + r').+(' + stext + r').+(' + pron + r')',
+                                                stence, re.IGNORECASE)
+
+                                k = k1 + k2 + k3 + k4
+                                k = ''.join(''.join(elems) for elems in k)
+                                k = re.sub(r'(' + qs + r')', '', k)
+                               # If there was a pronoun and said equiv outside of quotes, establish who
+                               # the reference is
+                                if len(k) > 0:
+
+                                    # First, check when the last person reference was
+                                    # The second items, the item in the person list, must be last because
+                                    # sppl has n ongoing
+                                    m = int(sppl[-1][-1])
+
+                                    l = n-int(m)
+
+
+                                    # If person in the previous sentence, use that one
+                                    if l==1:
+                                        quote = x1
+                                        last = sppl[-1][0]
+                                        person = sppl[-1][1]
+                                        firm = sppl[-1][2]
+                                        role = sppl[-1][3]
+                                        qtype = "single sentence quote"
+                                        qsaid = "yes"
+                                        qpref = "no"
+                                        comment = "pronoun"
+                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                                 qpref, comment, AN, date, source, stence]
+                                    # if no person in previous sentence, then check if quote in previous sentence
+                                    elif l>1:
+
+                                        s = df.loc[len(df.index) - 1].at['sent']
+                                        t = n - int(s)
+                                        if t==1:
+                                            quote = x1
+                                            last = df.loc[len(df.index) - 1].at['last']
+                                            person = df.loc[len(df.index) - 1].at['person']
+                                            firm = df.loc[len(df.index) - 1].at['firm']
+                                            role = df.loc[len(df.index) - 1].at['role']
+                                            qtype = "single sentence quote"
+                                            qsaid = "yes"
+                                            qpref = "no"
+                                            comment = "pronoun - reference partial profile"
+                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                                     qpref, comment, AN, date, source, stence]
+
+
 
                     # If said equivalent, no people and no quote, check if plural present
                     elif len(x1) == 0:
                         m = re.findall(r'(' + plurals + r')', stence, re.IGNORECASE)
                         if len(m) > 0:
                             last = "NA"
-                            person = ' '.join(m)
+                            person = ' '.join(''.join(elems) for elems in m)
                             firm = "NA"
                             role = "NA"
                             quote = stence
@@ -502,19 +714,20 @@ for sent in doc.sentences:
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
                                                      AN, date, source, stence]
 
-                        # If said equivalent, no people no quote and no plural, must be nondiscript said equivalent
+
+                        # If said equivalent, no people, no quote, no plural, check if pronoun, rep, and finally
+                        # Org
                         elif len(m) == 0:
+
                             k1 = re.findall(r'(' + stext + r')\W+(?:\w+\W+){0,' + str(mxpron) + r'}?(' + pron + r')',
                                             stence, re.IGNORECASE)
                             k2 = re.findall(r'(' + pron + r')\W+(?:\w+\W+){0,' + str(mxpron) + r'}?(' + stext + r')',
                                             stence, re.IGNORECASE)
                             k = k1 + k2
                             k = ''.join(''.join(elems) for elems in k)
-                            k = re.sub(r'[' + qs + r']', '', k)
+                            k = re.sub(r'(' + qs + r')', '', k)
                             if len(k) > 0:
                                 quote = stence
-                                # quote = re.sub(r'^'+stext+'.+','',quote)
-                                # quote = re.sub(r''+stext+'\Z','',quote)
                                 last = sppl[-1][0]
                                 person = sppl[-1][1]
                                 firm = sppl[-1][2]
@@ -525,62 +738,97 @@ for sent in doc.sentences:
                                 comment = "pronoun"
                                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
                                                          comment, AN, date, source, stence]
-                            # If said equiv, but no person, no quote, not plural, and no pronoun, check if a title
-                            # such as "The executive said..." or "the chairman said..."
+
+
                             elif len(k) == 0:
-                                p1a = re.findall(r'(' + l1 + r')', stence, re.IGNORECASE)
-                                p1b = re.findall(r'(' + l2 + r')', stence)
-                                p1 = p1a + p1b
-                                p1 = ''.join(''.join(elems) for elems in p1)
-                                if len(p1) > 0:
-                                    quote = stence
-                                    last = sppl[-1][0]
-                                    person = sppl[-1][1]
-                                    firm = sppl[-1][2]
-                                    role = sppl[-1][3]
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "no"
-                                    comment = "title reference"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                             comment, AN, date, source, stence]
-                                elif len(p1) == 0:
-                                    # see if it's a representative of a firm
-                                    if len(orgs) > 0:
-                                        for org in orgs:
-                                            m1 = re.findall(r'' + org + r'\s+(' + rep + r')', stence, re.IGNORECASE)
-                                            m2 = re.findall(r'(' + rep + r')\s+of\s+' + org + r'', stence,
-                                                            re.IGNORECASE)
-                                            m = m1 + m2
-                                            m = ''.join(''.join(elems) for elems in m)
-                                            m = re.sub(r'(' + org + r')', '', m)
-                                            if len(m) > 0:
-                                                last = "NA"
-                                                person = m
-                                                firm = org
-                                                role = "NA"
-                                                qtype = "paraphrase"
-                                                qsaid = "yes"
-                                                qpref = "one or more firms"
-                                                comment = "a firm representative said something"
-                                                quote = stence
-                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                         qsaid,
-                                                                         qpref, comment,
-                                                                         AN, date, source, stence]
-                                    elif len(orgs) == 0:
-                                        last = "misc"
-                                        person = "misc"
-                                        firm = "misc"
-                                        role = "misc"
+                                # If said equiv, but no person, no quote, no plural, and no pronoun, check if
+                                # end of quote, in which case you would just pass. This has already been captured.
+                                q2a = re.findall(r'(' + end + r')(.+)', stence, re.IGNORECASE)
+                                q2a = ''.join(''.join(elems) for elems in q2a)
+                                if len (q2a)>0:
+                                    pass
+                                else:
+                                    # If not end quote either, check if a title such as "The executive said..."
+                                    p1a = re.findall(r'(' + l1 + r')', stence, re.IGNORECASE)
+                                    p1b = re.findall(r'(' + l2 + r')', stence, re.IGNORECASE)
+                                    p1c = re.findall(r'(' + l3 + r')', stence, re.IGNORECASE)
+                                    p1d = re.findall(r'(' + l4 + r')', stence, re.IGNORECASE)
+                                    p1e = re.findall(r'(' + l5 + r')', stence)
+                                    p1 = p1a + p1b + p1c + p1d + p1e
+                                    p1 = ''.join(''.join(elems) for elems in p1)
+                                    if len(p1) > 0:
                                         quote = stence
+                                        last = sppl[-1][0]
+                                        person = sppl[-1][1]
+                                        firm = sppl[-1][2]
+                                        role = sppl[-1][3]
                                         qtype = "paraphrase"
                                         qsaid = "yes"
                                         qpref = "no"
-                                        comment = "Review - paraphrase from nondiscriptives"
-                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                 qpref,
+                                        comment = "title reference"
+                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
                                                                  comment, AN, date, source, stence]
+                                    elif len(p1) == 0:
+                                        # see if it's a representative of a firm
+                                        if len(orgs) > 0:
+                                            for org in orgs:
+                                                m1 = re.findall(r'' + org + r'\s+(' + rep + r')', stence, re.IGNORECASE)
+                                                m2 = re.findall(r'(' + rep + r')\s+of\s+' + org + r'', stence,
+                                                                re.IGNORECASE)
+                                                m = m1 + m2
+                                                m = ''.join(''.join(elems) for elems in m)
+                                                m = re.sub(r'(' + org + r')', '', m)
+                                                if len(m) > 0:
+                                                    last = m
+                                                    person = "NA"
+                                                    firm = org
+                                                    role = "NA"
+                                                    qtype = "paraphrase"
+                                                    qsaid = "yes"
+                                                    qpref = "one or more firms"
+                                                    comment = "a firm representative said something"
+                                                    quote = stence
+                                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
+                                                                             qsaid,
+                                                                             qpref, comment,
+                                                                             AN, date, source, stence]
+                                                # If not a rep, see if just one company
+                                                # If so, the company said something
+                                                elif len(m)==0:
+                                                    if len(orgs) == 1:
+                                                        quote = stence
+                                                        last = "NA"
+                                                        person = "NA"
+                                                        firm = orgs[0]
+                                                        role = "NA"
+                                                        qtype = "paraphrase"
+                                                        qsaid = "yes"
+                                                        qpref = "no"
+                                                        comment = 'One firm said something'
+                                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
+                                                                                 qsaid, qpref,
+                                                                                 comment, AN, date, source, stence]
+                                                    # If not, see if multiple companies
+                                                    # If so, add line for each org and said, but flag to review
+                                                    elif len(orgs) > 1:
+                                                        for org in orgs:
+                                                            quote = stence
+                                                            last = "NA"
+                                                            person = "NA"
+                                                            firm = org
+                                                            role = "NA"
+                                                            qtype = "paraphrase"
+                                                            qsaid = "yes"
+                                                            qpref = "no"
+                                                            comment = "Review - paraphrase from multiple firms"
+                                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote,
+                                                                                     qtype, qsaid, qpref,
+                                                                                     comment, AN, date, source, stence]
+
+
+
+
+
 
                     # Because said equivalent but no full quote, check if it's a beginning of multi-sentence quote
                     # If so, assume it would have to be from the most recent referenced person
@@ -588,25 +836,23 @@ for sent in doc.sentences:
                     else:
                         # check if a quote begins in this sentence:
                         q1 = re.findall(r'(' + start + r').+', stence, re.IGNORECASE)
-                        q1 = ' '.join(q1)
-                        q1 = re.sub(r'[' + qs + r']', '', q1)
+                        q1 = ' '.join(''.join(elems) for elems in q1)
+                        q1 = re.sub(r'(' + qs + r')', '', q1)
 
                         # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
                         if len(q1) > 0:
                             for s in range(n, len(doc.sentences)):
                                 j = doc.sentences[s]
                                 t = j.text
-                                q2 = re.findall(r'(.+)[' + end + r']', t, re.IGNORECASE)
-                                q2 = ' '.join(q2)
-                                q2 = re.sub(r'[' + qs + r']', '', q2)
+                                q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                                q2 = ' '.join(''.join(elems) for elems in q2)
+                                q2 = re.sub(r'(' + qs + r')', '', q2)
                                 if len(q2) == 0:
                                     q1 = q1 + " " + t
                                 if len(q2) > 0:
                                     q1 = q1 + " " + q2
                                     break
                             quote = q1
-                            quote = re.sub(r'^' + stext + '.+', '', quote)
-                            quote = re.sub(r'' + stext + '\Z', '', quote)
                             last = sppl[-1][0]
                             person = sppl[-1][1]
                             firm = sppl[-1][2]
@@ -621,9 +867,9 @@ for sent in doc.sentences:
 
             # if said something and exactly one person from list, do stuff
             elif len(prows) == 1:
-                ##################################
-                # ONE AND ONLY ONE PEOPLE REFERENCE
-                ##################################
+            ##################################
+            # ONE AND ONLY ONE PEOPLE REFERENCE
+            ##################################
 
                 last = prows[0][0]
 
@@ -643,7 +889,7 @@ for sent in doc.sentences:
                                  re.IGNORECASE)
                 s1 = s1a + s1b + s2a + s2b
                 s1 = ''.join(''.join(elems) for elems in s1)
-                s1 = re.sub(r'[' + qs + r']', '', s1)
+                s1 = re.sub(r'(' + qs + r')', '', s1)
                 s1 = re.sub(r'(' + stext + r')', '', s1)
                 s1 = re.sub(r'' + last + r'', '', s1)
 
@@ -671,7 +917,7 @@ for sent in doc.sentences:
                     # check if a quote begins in this sentence:
                     q1 = re.findall(r'(' + last + r').+(' + stext + r').+(' + start + r')(.+)', stence, re.IGNORECASE)
                     q1 = ''.join(''.join(elems) for elems in q1)
-                    q1 = re.sub(r'[' + qs + r']', '', q1)
+                    q1 = re.sub(r'(' + qs + r')', '', q1)
                     q1 = re.sub(r'' + last + r'', '', q1)
                     q1 = re.sub(r'(' + stext + r')', '', q1)
 
@@ -680,9 +926,9 @@ for sent in doc.sentences:
                         for s in range(n, len(doc.sentences)):
                             j = doc.sentences[s]
                             t = j.text
-                            q2 = re.findall(r'(.+)[' + end + r']', t, re.IGNORECASE)
-                            q2 = ' '.join(q2)
-                            q2 = re.sub(r'[' + qs + r']', '', q2)
+                            q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                            q2 = ''.join(''.join(elems) for elems in q2)
+                            q2 = re.sub(r'(' + qs + r')', '', q2)
                             if len(q2) == 0:
                                 q1 = q1 + " " + t
                             if len(q2) > 0:
@@ -704,7 +950,7 @@ for sent in doc.sentences:
                     elif len(q1) == 0:
                         s3 = re.findall(r'(' + start + r')(.+' + last + r'.+)(' + end + r')', stence, re.IGNORECASE)
                         s3 = ''.join(''.join(elems) for elems in s3)
-                        s3 = re.sub(r'[' + qs + r']', '', s3)
+                        s3 = re.sub(r'(' + qs + r')', '', s3)
 
                         if len(s3) > 0:
                             last = sppl[-1][0]
@@ -728,7 +974,7 @@ for sent in doc.sentences:
                                              re.IGNORECASE)
                             q1 = q1a + q1b
                             q1 = ''.join(''.join(elems) for elems in q1)
-                            q = re.sub(r'[' + qs + r']', '', q1)
+                            q = re.sub(r'(' + qs + r')', '', q1)
                             # If there is no full quote and no beginning quote, but there is an ending quote and a person,
                             # update the previous row with this person. The previous row was a multi-sentence quote defaulted
                             # defaulted as the most previous person mentioned. So this will just confirm the previous person,
@@ -772,7 +1018,7 @@ for sent in doc.sentences:
                                      re.IGNORECASE)
                     s1 = s1a + s1b
                     s1 = ''.join(''.join(elems) for elems in s1)
-                    s1 = re.sub(r'[' + qs + r']', '', s1)
+                    s1 = re.sub(r'(' + qs + r')', '', s1)
                     s1 = re.sub(r'(' + stext + r')', '', s1)
                     s1 = re.sub(r'' + last + r'', '', s1)
                     if len(s1) > 0:
@@ -794,7 +1040,7 @@ for sent in doc.sentences:
                                          re.IGNORECASE)
                         q1 = q1a + q1b
                         q1 = ''.join(''.join(elems) for elems in q1)
-                        q1 = re.sub(r'[' + qs + r']', '', q1)
+                        q1 = re.sub(r'(' + qs + r')', '', q1)
                         q1 = re.sub(r'(' + stext + r')', '', q1)
                         q1 = re.sub(r'' + last + r'', '', q1)
 
@@ -803,9 +1049,9 @@ for sent in doc.sentences:
                             for s in range(n, len(doc.sentences)):
                                 j = doc.sentences[s]
                                 t = j.text
-                                q2 = re.findall(r'(.+)[' + end + r']', t, re.IGNORECASE)
-                                q2 = ' '.join(q2)
-                                q2 = re.sub(r'[' + qs + r']', '', q2)
+                                q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                                q2 = ' '.join(''.join(elems) for elems in q2)
+                                q2 = re.sub(r'(' + qs + r')', '', q2)
 
                                 if len(q2) == 0:
                                     q1 = q1 + " " + t
@@ -832,21 +1078,18 @@ for sent in doc.sentences:
 
 
         elif len(s) == 0:
-            ##################################
-            # SENTENCES WITH NO "SAID" EQUIVALENT
-            ##################################
+        ##################################
+        # SENTENCES WITH NO "SAID" EQUIVALENT
+        ##################################
             # Check if no person:
             if len(prows) == 0:
                 ##################################
                 # NO PEOPLE REFERENCE
                 ##################################
-                # Since no clear person reference, check for FULL quotes:
-                x1a = re.findall(r'\"(\b.+\b\s+\b.+\b).+\"', stence, re.IGNORECASE)
-                x1b = re.findall(r'``(\b.+\b\s+\b.+\b).+\"', stence, re.IGNORECASE)
-                x1c = re.findall(r'``(\b.+\b\s+\b.+\b).+\'\'', stence, re.IGNORECASE)
-                x1 = x1a + x1b + x1c
+                # Since no clear person reference, check if 2+ words in a quote:
+                x1 = re.findall(r'(' + start + r')(\b.+\b\s+\b.+\b.*)(' + end + r')', stence, re.IGNORECASE)
                 x1 = ''.join(''.join(elems) for elems in x1)
-
+                x1 = re.sub(r'(' + qs + r')', '', x1)
                 # if so, assume must be from the most recent person referenced in the article
                 # As in "he said", refering to the most recent person
                 if len(x1) > 0:
@@ -863,43 +1106,78 @@ for sent in doc.sentences:
                     comment = "Quote with at least two words inside"
                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
                                              source, stence]
-                # Because said equivalent but no full quote, check if it's a beginning of multi-sentence quote
-                # If so, assume it would have to be from the most recent referenced person
-                # As in "he said", referring to the most recent person
+                # Because no said equiv or full quote, check if it's a beginning of multi-sentence quote
                 elif len(x1) == 0:
+                    # Check if just one word quoted, just add as information.
+                    g = re.findall(r'(' + start + r')(\b.+\b)(' + end + r')', stence, re.IGNORECASE)
+                    g = ''.join(''.join(elems) for elems in g)
+                    if len(g)>1:
+                        pass
+                    # If not, check if a quote begins in this sentence:
+                    else:
+                        q1 = re.findall(r'(' + start + r')(.+)', stence, re.IGNORECASE)
+                        q1 = ''.join(''.join(elems) for elems in q1)
+                        # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
+                        if len(q1) > 0:
+                            #set q2a variable as blank and then update if multi-sentence
+                            q2a = ""
+                            for s in range(n, len(doc.sentences)):
+                                j = doc.sentences[s]
+                                t = j.text
+                                q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                                q2 = ''.join(''.join(elems) for elems in q2)
+                                if len(q2) == 0:
+                                    q1 = q1 + " " + t
+                                else:
+                                    q1 = q1 + " " + q2
+                                    q2a = re.findall(r'(' + end + r')(.+)', t, re.IGNORECASE)
+                                    q2a = ''.join(''.join(elems) for elems in q2a)
+                                    break
+                            #If multi-sentence
+                            if len(q1)>0:
+                                z1 = re.findall(r'(' + l1 + r')', q2a, re.IGNORECASE)
+                                z2 = re.findall(r'(' + l2 + r')', q2a, re.IGNORECASE)
+                                z3 = re.findall(r'(' + l3 + r')', q2a, re.IGNORECASE)
+                                z4 = re.findall(r'(' + l4 + r')', q2a, re.IGNORECASE)
+                                z5 = re.findall(r'(' + l5 + r')', q2a, re.IGNORECASE)
+                                m = z1 + z2 + z3 + z4 + z5
 
-                    # check if a quote begins in this sentence:
-                    q1 = re.findall(r'(' + start + r')(.+)', stence, re.IGNORECASE)
-                    q1 = ''.join(''.join(elems) for elems in q1)
-                    q1 = re.sub(r'[' + qs + r']', '', q1)
+                                z = ''.join(''.join(elems) for elems in m)
 
-                    # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
-                    if len(q1) > 0:
-                        for s in range(n, len(doc.sentences)):
-                            j = doc.sentences[s]
-                            t = j.text
-                            q2 = re.findall(r'(.+)[' + end + r']', t, re.IGNORECASE)
-                            q2 = ''.join(''.join(elems) for elems in q2)
-                            q2a = re.findall(r'(.+)[' + end + r'](.+)', t, re.IGNORECASE)
-                            q2a = ''.join(''.join(elems) for elems in q2a)
-                            if len(q2) == 0:
-                                q1 = q1 + " " + t
-                            if len(q2) > 0:
-                                q1 = q1 + " " + q2
-                                q1a = q1 + " " + q2a
-                                break
+                                q1 = re.sub(r'(' + qs + r')', '', q1)
 
-                        quote = q1
-                        last = sppl[-1][0]
-                        person = sppl[-1][1]
-                        firm = sppl[-1][2]
-                        role = sppl[-1][3]
-                        qtype = "multi-sentence quote"
-                        qsaid = "no"
-                        qpref = "no"
-                        comment = "high accuracy"
-                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
-                                                 date, source, stence]
+
+                                if len(z)>0:
+                                    quote = q1
+                                    last = "NA"
+                                    person = "NA"
+                                    firm = "NA"
+                                    role = ""
+                                    for i in m:
+                                        j = ''.join(''.join(elems) for elems in i)
+                                        role = re.sub(r',', '', j)
+                                        if len(role) > 0:
+                                            break
+                                    qtype = "multi-sentence quote"
+                                    qsaid = "no"
+                                    qpref = "no"
+                                    comment = "high accuracy"
+                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
+                                                             comment, AN,
+                                                             date, source, stence]
+
+                                elif len(z)==0:
+                                    quote = q1
+                                    last = sppl[-1][0]
+                                    person = sppl[-1][1]
+                                    firm = sppl[-1][2]
+                                    role = sppl[-1][3]
+                                    qtype = "multi-sentence quote"
+                                    qsaid = "no"
+                                    qpref = "no"
+                                    comment = "high accuracy"
+                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN,
+                                                             date, source, stence]
 
             ##################################
             # ONE OR MORE PEOPLE REFERENCED
@@ -912,7 +1190,7 @@ for sent in doc.sentences:
 
                 x1 = re.findall(r'(' + start + r')(.+)(' + end + r')', stence, re.IGNORECASE)
                 x1 = ''.join(''.join(elems) for elems in x1)
-                x1 = re.sub(r'[' + qs + r']', '', x1)
+                x1 = re.sub(r'(' + qs + r')', '', x1)
 
                 # if so, assume must be from the most recent person referenced in the article
                 if len(x1) > 0:
@@ -944,16 +1222,16 @@ for sent in doc.sentences:
                     # check if a quote begins in this sentence:
                     q1 = re.findall(r'(' + start + r')(.+)', stence, re.IGNORECASE)
                     q1 = ''.join(''.join(elems) for elems in q1)
-                    q1 = re.sub(r'[' + qs + r']', '', q1)
+                    q1 = re.sub(r'(' + qs + r')', '', q1)
 
                     # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
                     if len(q1) > 0:
                         for s in range(n, len(doc.sentences)):
                             j = doc.sentences[s]
                             t = j.text
-                            q2 = re.findall(r'(.+)[' + end + r']', t, re.IGNORECASE)
-                            q2 = ' '.join(q2)
-                            q2 = re.sub(r'[' + qs + r']', '', q2)
+                            q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                            q2 = ' '.join(''.join(elems) for elems in q2)
+                            q2 = re.sub(r'(' + qs + r')', '', q2)
                             if len(q2) == 0:
                                 q1 = q1 + " " + t
                             if len(q2) > 0:
@@ -996,7 +1274,7 @@ for sent in doc.sentences:
         # If exactly 1 person, check if quotes. No need to check for pronouns yet because no reference yet:
 
         if len(ppl) == 1:
-
+            per = ppl[0]
             # Quote then person then said equivalent
             s1a = re.findall(r'(' + start + r')(.+)(' + end + r').+(' + per + r').+(' + stext + r')', stence,
                              re.IGNORECASE)
@@ -1009,7 +1287,7 @@ for sent in doc.sentences:
                              re.IGNORECASE)
             s1 = s1a + s1b + s1c + s1d
             s1 = ''.join(''.join(elems) for elems in s1)
-            s1 = re.sub(r'[' + qs + r']', '', s1)
+            s1 = re.sub(r'(' + qs + r')', '', s1)
             s1 = re.sub(r'(' + stext + r')', '', s1)
             s1 = re.sub(r'' + per + r'', '', s1)
             if len(s1) > 0:
@@ -1022,8 +1300,6 @@ for sent in doc.sentences:
                 qpref = "yes"
                 comment = "review - no full profile of person yet"
                 quote = s1
-                quote = re.sub(r'^' + stext + '.+', '', quote)
-                quote = re.sub(r'' + stext + '\Z', '', quote)
                 quote = re.sub(r'' + per + '', '', quote)
                 df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
                                          source, stence]
@@ -1033,7 +1309,7 @@ for sent in doc.sentences:
                 q1b = re.findall(r'(' + stext + r').+(' + per + r').+(' + start + r')(.+)', stence, re.IGNORECASE)
                 q1 = q1a + q1b
                 q1 = ''.join(''.join(elems) for elems in q1)
-                q1 = re.sub(r'[' + qs + r']', '', q1)
+                q1 = re.sub(r'(' + qs + r')', '', q1)
                 q1 = re.sub(r'(' + stext + r')', '', q1)
                 q1 = re.sub(r'' + per + r'', '', q1)
 
@@ -1042,16 +1318,16 @@ for sent in doc.sentences:
                     for s in range(n, len(doc.sentences)):
                         j = doc.sentences[s]
                         t = j.text
-                        q2 = re.findall(r'(.+)[' + end + r']', t, re.IGNORECASE)
-                        q2 = ' '.join(q2)
-                        q2 = re.sub(r'[' + qs + r']', '', q2)
+                        q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                        q2 = ''.join(''.join(elems) for elems in q2)
+                        q2 = re.sub(r'(' + qs + r')', '', q2)
                         if len(q2) == 0:
                             q1 = q1 + " " + t
                         if len(q2) > 0:
                             q1 = q1 + " " + q2
                             break
 
-                    last = "NA"
+                    last = per.split()[-1]
                     person = per
                     firm = "NA"
                     role = "NA"
@@ -1064,7 +1340,20 @@ for sent in doc.sentences:
                     comment = "review - no full profile of person yet"
                     df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
                                              source, stence]
-                # If no people in cumulative list or in this
+                elif len(q1)==0:
+                    last = per.split()[-1]
+                    person = per
+                    firm = "NA"
+                    role = "NA"
+                    qtype = "information"
+                    qsaid = "yes"
+                    qpref = "yes"
+                    quote = stence
+                    comment = "Information about one person"
+                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment, AN, date,
+                                             source, stence]
+
+                # If no people in cumulative list or in this sent
                 elif len(q1) == 0:
                     if len(orgs) > 1:
                         s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
@@ -1104,7 +1393,7 @@ for sent in doc.sentences:
                 quote = stence
                 last = per.split()[-1]
                 person = per
-                firm = ''.join(''.join(elems) for elems in orgs)
+                firm = ' '.join(''.join(elems) for elems in orgs)
                 role = "NA"
                 qtype = "Information"
                 qsaid = "no"
@@ -1152,9 +1441,9 @@ for sent in doc.sentences:
                         m = re.sub(r'(' + org + r')', '', m)
                         if len(m) > 0:
                             last = "NA"
-                            person = m
+                            person = "NA"
                             firm = org
-                            role = "NA"
+                            role = m
                             qtype = "paraphrase"
                             qsaid = "yes"
                             qpref = "one or more firms"
@@ -1163,19 +1452,177 @@ for sent in doc.sentences:
                             df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
                                                      AN, date, source, stence]
 
-    else:
-        pass
+
+            # No people list, no people, no org, see if a quote
+            elif len(orgs)==0:
+                # see if quote
+                # Quote then person then said equivalent
+                s1a = re.findall(r'(' + start + r')(.+)(' + end + r').+(' + stext + r')', stence,re.IGNORECASE)
+                s2a= re.findall(r'(' + start + r')(.+)(' + end + r').+(' + stext + r')', stence,re.IGNORECASE)
+                s = s1a + s2a
+                s = ''.join(''.join(elems) for elems in s)
+                s = re.sub(r'(' + qs + r')', '', s)
+                s = re.sub(r'(' + stext + r')', '', s)
+                if len(s) > 0:
+                # Check for pronoun:
+                    s3a = re.findall(r''+ pron + r'', stz4 , re.IGNORECASE)
+                    if len(s3a)>0:
+
+                        # check when the last person reference was
+                        # The second items, the item in the person list, must be last because
+                        # sppl has n ongoing
+                        m = int(sppl[-1][-1])
+                        l = n - int(m)
+                        # If person in the previous sentence, use that one
+                        if l == 1:
+                            quote = s
+                            last = sppl[-1][0]
+                            person = sppl[-1][1]
+                            firm = sppl[-1][2]
+                            role = sppl[-1][3]
+                            qtype = "single sentence quote"
+                            qsaid = "yes"
+                            qpref = "no"
+                            comment = "pronoun - from previous sentence"
+                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                     qpref, comment, AN, date, source, stence]
+                        # if no person in previous sentence, then check if quote in previous sentence
+                        # You should attribute this quote to the person attributed to the previous sentence.
+                        elif l > 1:
+                            s = df.loc[len(df.index) - 1].at['sent']
+                            t = n - int(s)
+                            if t == 1:
+                                quote = s
+                                last = df.loc[len(df.index) - 1].at['last']
+                                person = df.loc[len(df.index) - 1].at['person']
+                                firm = df.loc[len(df.index) - 1].at['firm']
+                                role = df.loc[len(df.index) - 1].at['role']
+                                qtype = "single sentence quote"
+                                qsaid = "yes"
+                                qpref = "no"
+                                comment = "pronoun - reference partial profile"
+                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                         qpref, comment, AN, date, source, stence]
+                # if no quote, see if beginning of multi-sentence quote:
+                elif len(s) ==0:
+                    # check if a quote begins in this sentence:
+                    q1a = re.findall(r'^\s*(' + start + r')(.+)', stence, re.IGNORECASE)
+                    q1b = re.findall(r'(' + stext + r').+\s+(' + start + r')(.+)', stence, re.IGNORECASE)
+
+                    q1 = q1a + q1b
+                    q1 = ''.join(''.join(elems) for elems in q1)
+                    q1 = re.sub(r'(' + qs + r')', '', q1)
+                    q1 = re.sub(r'(' + stext + r')', '', q1)
+
+                    # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
+                    if len(q1) > 0:
+                        q2a = ""
+                        for s in range(n, len(doc.sentences)):
+                            j = doc.sentences[s]
+                            t = j.text
+                            q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
+                            q2 = ' '.join(''.join(elems) for elems in q2)
+                            q2 = re.sub(r'(' + qs + r')', '', q2)
+                            if len(q2) == 0:
+                                q1 = q1 + " " + t
+                            else:
+                                q1 = q1 + " " + q2
+                                q2a = re.findall(r'(' + end + r')(.+)', t, re.IGNORECASE)
+                                q2a = ''.join(''.join(elems) for elems in q2a)
+                                break
+                        q1 = re.sub(r'(' + qs + r')', '', q1)
+                        z1 = re.findall(r'(' + l1 + r')', q2a, re.IGNORECASE)
+                        z2 = re.findall(r'(' + l2 + r')', q2a, re.IGNORECASE)
+                        z3 = re.findall(r'(' + l3 + r')', q2a, re.IGNORECASE)
+                        z4 = re.findall(r'(' + l4 + r')', q2a, re.IGNORECASE)
+                        z5 = re.findall(r'(' + l5 + r')', q2a, re.IGNORECASE)
+                        m = z1 + z2 + z3 + z4 + z5
+
+                        z = ''.join(''.join(elems) for elems in m)
+                        if len(z) > 0:
+                            # was information tied to previous sentence.
+                            # You should attribute this quote to the person (a partial profile)
+                            # attributed to the previous sentence.
+                            s = df.loc[len(df.index) - 1].at['sent']
+                            t = n - int(s)
+                            if t == 1:
+                                quote = q1
+                                last = df.loc[len(df.index) - 1].at['last']
+                                person = df.loc[len(df.index) - 1].at['person']
+                                firm = df.loc[len(df.index) - 1].at['firm']
+                                role = ""
+                                for i in m:
+                                    j = ''.join(''.join(elems) for elems in i)
+                                    role = re.sub(r',', '', j)
+                                    if len(role) > 0:
+                                        break
+                                qtype = "multi-sentence quote"
+                                qsaid = "maybe"
+                                qpref = "no"
+                                comment = "Title of previous partial profile person"
+                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                         qpref, comment, AN, date, source, stence]
+                        #If not, check for pronouns in last sentence
+                        elif len(z)==0:
+                            s4a = re.findall(r'' + pron + r'.+' + stext + r'', q2a, re.IGNORECASE)
+                            s4b = re.findall(r'' + stext + r'.+' + pron + r'', q2a, re.IGNORECASE)
+                            z = s4a + s4b
+                            z = ''.join(''.join(elems) for elems in z)
+
+                            if len(z) > 0:
+                                # was information tied to previous sentence.
+                                # You should attribute this quote to the person (a partial profile)
+                                # attributed to the previous sentence.
+                                s = df.loc[len(df.index) - 1].at['sent']
+                                t = n - int(s)
+                                if t == 1:
+                                    quote = q1
+                                    last = df.loc[len(df.index) - 1].at['last']
+                                    person = df.loc[len(df.index) - 1].at['person']
+                                    firm = df.loc[len(df.index) - 1].at['firm']
+                                    role = df.loc[len(df.index) - 1].at['role']
+                                    qtype = "multi-sentence quote"
+                                    qsaid = "maybe"
+                                    qpref = "no"
+                                    comment = "pronoun of previous partial person"
+                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                             qpref, comment, AN, date, source, stence]
+                    #If no quote single/multiple, see if any information
+                    if len(q1) == 0:
+                        if len(df.index)>0:
+                            y = df.loc[len(df.index) - 1].at['last']
+                            x = re.findall(r'(' + y + r')', stence, re.IGNORECASE)
+                            if len(x)>0:
+                                last = df.loc[len(df.index) - 1].at['last']
+                                person = df.loc[len(df.index) - 1].at['person']
+                                firm = df.loc[len(df.index) - 1].at['firm']
+                                role = df.loc[len(df.index) - 1].at['role']
+                                qtype = "information"
+                                qsaid = "no"
+                                qpref = "yes"
+                                comment = "info about an individual"
+                                quote = stence
+                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
+                                                         comment, AN, date,
+                                                         source, stence]
+
+
+
+
+
 
     #for ent in sent.ents:
     #    print(n, ent.text, ent.type)
 
     # print (n, "PERSON:",person,"ROLE:",role,"FIRM:",firm, "QUOTE:",quote, "TYPE:",qtype,"SAID:",qsaid,"REF:",qpref,"COMMENTS:",comment)
-    # print(n, people)
+    #print(n, people)
 
-    # print (n,stence)
+
+    #print (n,stence)
     n += 1
 
 df
+
 
 # df.to_csv(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\data1.csv')
 
@@ -1187,7 +1634,6 @@ df
 # Should add any information options if no 'people' but firm or person?
 # Non-business edge cases:
 # #2 - crazy edge case
-# #5 - check out sentence 18 and maybe 12
 # #6 negotiator is attributed wrong firm because no firm (it does say Japanese before if could use that part os speach maybe?
 # 11 - small, didn't assign role of "House Speaker". Not a big deal
 # 14 - Name with not title or org in first sentence. Second sentence is quote with the person's
