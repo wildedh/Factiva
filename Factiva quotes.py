@@ -129,83 +129,97 @@ for art in arts:
         #Go through each sentence to find if it's introducing a person and their role and firm
         for sent in doc.sentences:
             stence = sent.text
+            # Make sure there is something in the sentence. If not, skip.
+            ws = re.sub(r'\w+','',stence)
+            if len(ws)>0:
 
-            # Calculate the sentiment for each sentence
-            ment = sent.sentiment
+                # Set a trigger variable to 0 once start a new sentence.
+                dr = 0
+                # Calculate the sentiment for each sentence
+                ment = sent.sentiment
 
-            #for ent in sent.ents:
-            #    print(n, ent.text, ent.type)
+                #for ent in sent.ents:
+                #    print(n, ent.text, ent.type)
 
-            last = ""
-            role = ""
-            person = ""
-            firm = ""
-            # Check if name title in the sentence:
-            g = re.findall(r'(((\b[A-Z]+\b\W*){4,})\:)', stence)
-            if len(g)>0:
-                a = g[0][0]
-                a = re.sub(r':', '', a)
-                # If company name is Inc and has a comma, remove the comma
-                a = re.sub('\,\s+(INC|Inc)', ' Inc', a, re.IGNORECASE)
-                p = a.split(',')
-
-
-                person = p[0]
-                # Figure out the last name depending on if there's a suffix
-                sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                if len(sfx) > 0:
-                    last = person.split()[-2]
-                elif len(sfx) == 0:
-                    last = person.split()[-1]
-                firm = p[-1]
-                # Lastly, if there are four pieces the role is the 2nd and 3rd pieces so combine
-                if len(p) == 4:
-                    r = p[1] + p[2]
-                    role = ''.join(''.join(elems) for elems in r)
-                elif len(p) == 3:
-                    role = p[1]
-                row = [last, person, firm, role, n]
+                last = ""
+                role = ""
+                person = ""
+                firm = ""
+                # Check if name title in the sentence:
+                g = re.findall(r'(((\b[A-Z]+\b\W*){4,})\:)', stence)
+                if len(g)>0:
+                    a = g[0][0]
+                    a = re.sub(r':', '', a)
+                    # If company name is Inc and has a comma, remove the comma
+                    a = re.sub('\,\s+(INC|Inc)', ' Inc', a, re.IGNORECASE)
+                    p = a.split(',')
 
 
-                # If something in each key varable then add to the dataset of people
-                if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
-                    # Filter out people who already were added to the list
-                    if last in lsts:
-                        pass
-                    else:
-                        people.append(row)
-                        # remove duplicates
-                        people = [list(x) for x in set(tuple(x) for x in people)]
-                        sppl.append(row)
-                        lsts.append(last)
+                    person = p[0]
+                    # Figure out the last name depending on if there's a suffix
+                    sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
+                    if len(sfx) > 0:
+                        last = person.split()[-2]
+                    elif len(sfx) == 0:
+                        last = person.split()[-1]
+                    firm = p[-1]
+                    # Lastly, if there are four pieces the role is the 2nd and 3rd pieces so combine
+                    if len(p) == 4:
+                        r = p[1] + p[2]
+                        role = ''.join(''.join(elems) for elems in r)
+                    elif len(p) == 3:
+                        role = p[1]
+                    row = [last, person, firm, role, n]
 
-            elif len(g)==0:
-                # check if person in people list talking
-                for per in people:
-                    last = per[0]
-                    h = re.findall(r'' + last+ r':', stence, re.IGNORECASE)
-                    if len(h)>0:
-                        # Strip the beginning with the quote.
-                        quote = re.sub(r'^.*' + last + r':', '', stence)
+
+                    # If something in each key varable then add to the dataset of people
+                    if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
+                        # Filter out people who already were added to the list
+                        if last in lsts:
+                            pass
+                        else:
+                            people.append(row)
+                            # remove duplicates
+                            people = [list(x) for x in set(tuple(x) for x in people)]
+                            sppl.append(row)
+                            lsts.append(last)
+
+
+
+                elif len(g)==0:
+                    m = []
+                    # check if person in people list talking
+                    for per in people:
                         last = per[0]
-                        person = per[1]
-                        firm = per[2]
-                        role = per[3]
-                        qtype = "Transcript"
-                        qsaid = "yes"
-                        qpref = "yes"
-                        comment = "Transcript"
-                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                 AN, date,
-                                                 source, ment, stence]
-                        #Add this person to the running list of sequential people speaking
-                        sppl.append(per)
+                        h = re.findall(r'' + last + r':', stence, re.IGNORECASE)
+                        m = m + h
+                    m = ''.join(''.join(elems) for elems in m)
+                    if len(m)>0:
+                        for per in people:
+                            last = per[0]
+                            l = re.findall(r'' + last + r':', stence, re.IGNORECASE)
+                            if len(l)>0:
+                                # Strip the beginning with the quote.
+                                quote = re.sub(r'^.*' + last + r':', '', stence)
+                                last = per[0]
+                                person = per[1]
+                                firm = per[2]
+                                role = per[3]
+                                qtype = "Transcript"
+                                qsaid = "yes"
+                                qpref = "yes"
+                                comment = "Transcript"
+                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
+                                                         AN, date, source, ment, stence]
+                                #Add this person to the running list of sequential people speaking
+                                sppl.append(per)
+                                break
 
                    #If there isn't an introduction of a person or a reintroduction of a person
-                    elif len(h)==0:
+                    elif len(m)==0:
                         # Are there any people in the people list yet?
                         # If so, then the sentence belongs to the last person assigned.
-                        if len(people)>0:
+                        if len(people) > 0:
                             quote = re.sub(r'^.*' + last + r':', '', stence)
                             last = sppl[-1][0]
                             person = sppl[-1][1]
@@ -219,9 +233,11 @@ for art in arts:
                                                      AN, date,
                                                      source, ment, stence]
 
-            n+=1
+                n+=1
 
-
+    #####################
+    # Non-transcripts
+    #####################
     elif len(f)==0:
 
         for sent in doc.sentences:
@@ -2231,11 +2247,5 @@ df
 # print(people)
 
 # TO DO:
-# Interviews
-# Analyst calls
-# Should add any information options if no 'people' but firm or person?
-# Non-business edge cases:
-# 11 - small, didn't assign role of "House Speaker". Not a big deal
-# 14 - Name with not title or org in first sentence. Second sentence is quote with the person's
-#    title "computer software executive" of unnamed org.
-# 15 - political titles
+# Take out blank sentences
+# Remove "OPERATOR" stuff
