@@ -63,7 +63,7 @@ rep = r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|exe
 start = r'\"|\“|\'\'|\`\`'
 end = r'\"|\”|\'\''
 qs = r'\“|\`\`|\”|\"|\'\''
-suf = r'Jr\.|Sr.|\sI\s|\sII\s|\sIII\s|PhD|Ph.D|MBA|CPA'
+suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
 
 
 z = 1
@@ -71,8 +71,7 @@ z = 1
 
 #for art in range(0, len(dfa.index)):
 
-arts=[194]
-
+arts=[210]
 for art in arts:
 
 
@@ -120,7 +119,6 @@ for art in arts:
     n = 1
 
 #        try:
-
     # Look through document and see if has instances of at least four all-cap words
     # broken up by non-word characters (e.g., spaces, commas) followed by a colon.
     f = re.findall(r'(((\b[A-Z]+\b\W*){4,})\:)',text)
@@ -130,8 +128,8 @@ for art in arts:
         for sent in doc.sentences:
             stence = sent.text
             # Make sure there is something in the sentence. If not, skip.
-            ws = re.sub(r'\w+','',stence)
-            if len(ws)>0:
+            op = re.findall(r'^OPERATOR',stence)
+            if len(op)==0:
 
                 # Set a trigger variable to 0 once start a new sentence.
                 dr = 0
@@ -290,6 +288,7 @@ for art in arts:
                         ppl.append(ent.text)
                         sfx = re.findall(r'(' + suf + r')', ent.text,re.IGNORECASE)
                         if len(sfx)>0:
+
                             l = ent.text.split()[-2]
                             lasts.append(l)
                         elif len(sfx)==0:
@@ -1067,22 +1066,23 @@ for art in arts:
                                                                          qpref, comment, AN, date, source, ment, stence]
                                             # if no person in previous sentence, then check if quote in previous sentence
                                             elif l > 1:
-
-                                                s = df.loc[len(df.index) - 1].at['sent']
-                                                t = n - int(s)
-                                                if t == 1:
-                                                    quote = x1
-                                                    last = df.loc[len(df.index) - 1].at['last']
-                                                    person = df.loc[len(df.index) - 1].at['person']
-                                                    firm = df.loc[len(df.index) - 1].at['firm']
-                                                    role = df.loc[len(df.index) - 1].at['role']
-                                                    qtype = "single sentence quote"
-                                                    qsaid = "yes"
-                                                    qpref = "no"
-                                                    comment = "pronoun - reference partial profile"
-                                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                             qsaid,
-                                                                             qpref, comment, AN, date, source, ment, stence]
+                                                # Check if there's something in DF:
+                                                if len(df.index) > 0:
+                                                    s = df.loc[len(df.index) - 1].at['sent']
+                                                    t = n - int(s)
+                                                    if t == 1:
+                                                        quote = x1
+                                                        last = df.loc[len(df.index) - 1].at['last']
+                                                        person = df.loc[len(df.index) - 1].at['person']
+                                                        firm = df.loc[len(df.index) - 1].at['firm']
+                                                        role = df.loc[len(df.index) - 1].at['role']
+                                                        qtype = "single sentence quote"
+                                                        qsaid = "yes"
+                                                        qpref = "no"
+                                                        comment = "pronoun - reference partial profile"
+                                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
+                                                                                 qsaid,
+                                                                                 qpref, comment, AN, date, source, ment, stence]
 
 
 
@@ -2152,25 +2152,27 @@ for art in arts:
                                     # was information tied to previous sentence.
                                     # You should attribute this quote to the person (a partial profile)
                                     # attributed to the previous sentence.
-                                    s = df.loc[len(df.index) - 1].at['sent']
-                                    t = n - int(s)
-                                    if t == 1:
-                                        quote = q1
-                                        last = df.loc[len(df.index) - 1].at['last']
-                                        person = df.loc[len(df.index) - 1].at['person']
-                                        firm = df.loc[len(df.index) - 1].at['firm']
-                                        role = ""
-                                        for i in m:
-                                            j = ''.join(''.join(elems) for elems in i)
-                                            role = re.sub(r',', '', j)
-                                            if len(role) > 0:
-                                                break
-                                        qtype = "multi-sentence quote"
-                                        qsaid = "maybe"
-                                        qpref = "no"
-                                        comment = "Title of previous partial profile person"
-                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                 qpref, comment, AN, date, source, ment, stence]
+                                    # Check if there's something in DF:
+                                    if len(df.index) > 0:
+                                        s = df.loc[len(df.index) - 1].at['sent']
+                                        t = n - int(s)
+                                        if t == 1:
+                                            quote = q1
+                                            last = df.loc[len(df.index) - 1].at['last']
+                                            person = df.loc[len(df.index) - 1].at['person']
+                                            firm = df.loc[len(df.index) - 1].at['firm']
+                                            role = ""
+                                            for i in m:
+                                                j = ''.join(''.join(elems) for elems in i)
+                                                role = re.sub(r',', '', j)
+                                                if len(role) > 0:
+                                                    break
+                                            qtype = "multi-sentence quote"
+                                            qsaid = "maybe"
+                                            qpref = "no"
+                                            comment = "Title of previous partial profile person"
+                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                                     qpref, comment, AN, date, source, ment, stence]
                                 # If not, check for pronouns in last sentence
                                 elif len(z) == 0:
                                     s4a = re.findall(r'' + pron + r'.+' + stext + r'', q2a, re.IGNORECASE)
@@ -2182,20 +2184,22 @@ for art in arts:
                                         # was information tied to previous sentence.
                                         # You should attribute this quote to the person (a partial profile)
                                         # attributed to the previous sentence.
-                                        s = df.loc[len(df.index) - 1].at['sent']
-                                        t = n - int(s)
-                                        if t == 1:
-                                            quote = q1
-                                            last = df.loc[len(df.index) - 1].at['last']
-                                            person = df.loc[len(df.index) - 1].at['person']
-                                            firm = df.loc[len(df.index) - 1].at['firm']
-                                            role = df.loc[len(df.index) - 1].at['role']
-                                            qtype = "multi-sentence quote"
-                                            qsaid = "maybe"
-                                            qpref = "no"
-                                            comment = "pronoun of previous partial person"
-                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                     qpref, comment, AN, date, source, ment, stence]
+                                        # Check if there's something in DF:
+                                        if len(df.index) > 0:
+                                            s = df.loc[len(df.index) - 1].at['sent']
+                                            t = n - int(s)
+                                            if t == 1:
+                                                quote = q1
+                                                last = df.loc[len(df.index) - 1].at['last']
+                                                person = df.loc[len(df.index) - 1].at['person']
+                                                firm = df.loc[len(df.index) - 1].at['firm']
+                                                role = df.loc[len(df.index) - 1].at['role']
+                                                qtype = "multi-sentence quote"
+                                                qsaid = "maybe"
+                                                qpref = "no"
+                                                comment = "pronoun of previous partial person"
+                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
+                                                                         qpref, comment, AN, date, source, ment, stence]
                             # If no quote single/multiple, see if any information
                             if len(q1) == 0:
                                 if len(df.index) > 0:
@@ -2227,25 +2231,23 @@ for art in arts:
 
             # print (n,stence)
             n += 1
-    #        except:
-    #            df.loc[len(df.index)] = ["Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
-    #                                     "Issue", AN, date, source, "Issue", "Issue"]
+#        except:
+#            df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
+#                                     "Issue", AN, date, source, "Issue", "Issue"]
 
 
-    #    except:
-    #        df.loc[len(df.index)] = ["Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
-    #                                 "Issue", AN, date, source, "Issue","Issue"]
-    #    t2 = time.time()
-    #    total = t1 - t0
-    #    print(art+1, AN, "time run:", round(t2 - t1, 2), "total hours:", round((t2 - t0) / (60 * 60), 2),
-    #          "mean rate:", round((t2-t0)/(art+1), 2))
+#    except:
+#        df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
+#                                 "Issue", AN, date, source, "Issue","Issue"]
+    t2 = time.time()
+    total = t1 - t0
+    print(art+1, AN, "time run:", round(t2 - t1, 2), "total hours:", round((t2 - t0) / (60 * 60), 2),
+          "mean rate:", round((t2-t0)/(art+1), 2))
 
 
-#df.to_csv(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4_quotes3.csv')
+#df.to_csv(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4_quotes5.csv')
 df
 
 # print(people)
 
 # TO DO:
-# Take out blank sentences
-# Remove "OPERATOR" stuff
