@@ -68,7 +68,7 @@ news = r'Reuters|'
 
 z = 1
 
-arts = [195]
+arts = [212]
 
 for art in arts:
 #for art in dfa.index:
@@ -1691,9 +1691,9 @@ for art in arts:
 
 
                 elif len(s) == 0:
-                    ##################################
-                    # SENTENCES WITH NO "SAID" EQUIVALENT
-                    ##################################
+                ##################################
+                # SENTENCES WITH NO "SAID" EQUIVALENT
+                ##################################
                     # Check if no person:
                     if len(prows) == 0:
                         ##################################
@@ -1725,7 +1725,7 @@ for art in arts:
                             dx += 1
                         # Because no said equiv or full quote, check if it's a beginning of multi-sentence quote
                         elif len(x1) == 0:
-                            # Check if just one word quoted, just add as information.
+                            # Check if just one word quoted, keep going and do nothing
                             g = re.findall(r'(' + start + r')(\b.+\b)(' + end + r')', stence, re.IGNORECASE)
                             g = ''.join(''.join(elems) for elems in g)
                             if len(g) > 1:
@@ -1734,6 +1734,7 @@ for art in arts:
                             else:
                                 q1 = re.findall(r'(' + start + r')(.+)', stence, re.IGNORECASE)
                                 q1 = ''.join(''.join(elems) for elems in q1)
+
                                 # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
                                 if len(q1) > 0:
                                     # set q2a variable as blank and then update if multi-sentence
@@ -2516,3 +2517,7 @@ df
 # df.to_csv(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\data1.csv')
 
 # print(people)
+
+
+# TO DO:
+# Former leaders
