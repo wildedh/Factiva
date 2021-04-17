@@ -10,7 +10,7 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\issues1.xlsx')
+dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
 # combine the lead paragraph and the body of the article
 
@@ -68,7 +68,7 @@ news = r'Reuters|'
 
 z = 1
 
-arts = [0]
+arts = [195]
 
 for art in arts:
 #for art in dfa.index:
@@ -491,30 +491,72 @@ for art in arts:
                         elif len(orgs) > 1:
 
                             # Create list and variable that will be used at the end of this iteration of orgs
+                            # "gm" checks if there are any instances in which an org is a substring of another
+                            #  org name. If yes, len(g)>0. If not, len(g) = 0 and you're good.
                             c = 0
                             b = 0
+                            h = 0
                             xl = []
                             op = ""
                             gh = []
+                            gp = []
                             for o in orgs:
                                 or1 = orgs.copy()
                                 or1.remove(o)
 
                                 li = [match for match in or1 if o in match]
                                 gh.append(li)
+                                # If there is substring occurance, create a list with all firms with that substring
+                                if len(li) > 0:
+                                    li.append(o)
+                                    gp.append(li)
+                                    gp = gp[0]
                             gm = ''.join(''.join(elems) for elems in gh)
 
+
                             for o in orgs:
-                                # First must check if one or more orgs are a subset of one or more of each other
-                                # To do so, make a list with the focal org omitted
+                                # We want to make sure that the right org name gets assigned. The problem is
+                                # if there is a org that is a substring of the correct org name such as GM within the
+                                # correct GM Europe in (e.g., "GM is working on developing the new model, said
+                                # Carl-Peter Forster, president of GM Europe"). In these cases, it would assign "GM"
+                                # and not GM Europe. So, we need to set a couple of variables; namely, c if we've assigned
+                                # already, and b if the focal org is a substring of another org in the sentence.
+                                # So, if you've already assigned (c>0) and a subset of another org (b>0), then
+                                # you're done. Four cases: (1) GM before GM Europe and GM Europe is correct:
+                                # step 1, c = 0 and b>1 GM is focal org and assigns first, then when do GM Europe
+                                # c = 1 and b = 0 so that ultimately gets assigned. (2) GM before GM Europe and GM
+                                # is correct: GM gets assigned as above and when GM Europe goes through it doesn't
+                                # replace GM. (3) GM Europe before GM and GM Europe correct: GM Europe assigned
+                                # then under GM c = 1 and b = 1 so stay at GM Europe.. (4) GM Europe before GM
+                                # and GM is correct: GM Europe doesn't match, then under GM, c = 0 and b = 1
+                                # so GM is assigned.
+
+                                # To do so, we need to make a list with the focal org omitted
                                 or2 = orgs.copy()
                                 or2.remove(o)
-                                # list the orgs that have the focal org in it (e.g. "GM" is in "GM Europe" and "GM Americas")
                                 b = [match for match in or2 if o in match]
 
                                 if c > 0 and len(b) > 0:
                                     break
                                 else:
+                                    # Check if focal org is in the list of multi versions (e.g., GM, GM Europe)
+                                    # variable "l" set to 0, and turns 1 if in the list.
+                                    l = 0
+                                    if o in gp:
+                                        l = 1
+
+                                    # There are strong matches (e.g., whose, 's, and of) in which if we find a
+                                    # match the only thing that would make us look further is if it's in the multi-
+                                    # version list (e.g., GM, GM Europe). If not, you're done. The h variable
+                                    # will > 0 once a strong match has occurred. If h > 0 (strong match has
+                                    # occurred) but l == 0 (the focal org is not in the multi-version list)
+                                    # skip ("continue") this org to the next org in the for loop.
+                                    # Essentially, at this point you'll only update a strong match
+                                    # with a better version of the org for which you had a strong match.
+
+                                    if h>0 and l==0:
+                                        continue
+
 
                                     # Check if there is possession with one "'s" in the org
                                     o1 = re.findall(r'' + o + r'\'s', stz4, re.IGNORECASE)
@@ -583,7 +625,9 @@ for art in arts:
                                                     break
                                             o = o.replace(r"'s", "")
                                             firm = o
+
                                             c += 1
+                                            h += 1
                                             if len(gm) == 0:
                                                 break
 
@@ -634,6 +678,7 @@ for art in arts:
                                                     break
                                             firm = o
                                             c += 1
+                                            h += 1
                                             if len(gm) == 0:
                                                 break
 
@@ -674,30 +719,13 @@ for art in arts:
 
                                                 firm = o
                                                 c += 1
+                                                h += 1
                                                 if len(gm) == 0:
                                                     break
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                            # If not, check if name and person are close to title, assign
+                                            # If not any of these three strong matches ('s, of, whose),
+                                            # check on a weaker match: if name and person are close to title
                                             elif len(j) == 0:
 
                                                 o5a = re.findall(
@@ -744,7 +772,7 @@ for art in arts:
 
                                                 on = ''.join(''.join(elems) for elems in m)
 
-                                                # If so, check if person is also near title
+                                                # If so, check if person is also near the title
                                                 if len(on) > 0:
 
                                                     o7a = re.findall(
