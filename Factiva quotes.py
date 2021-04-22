@@ -10,7 +10,7 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
+dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final7.xlsx')
 
 # combine the lead paragraph and the body of the article
 
@@ -55,7 +55,7 @@ l4 = r'president|chair\S+|director|manager|vp|' \
      r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|executive\b|aide|pilot|professor|' \
      r'attorney|minister|secretary|guru|partner|general\s+counsel'
 
-l5 = r'\bC.O\b'
+l5 = r'\bC.O\b|board|administrator'
 
 pron = r'\bhe\b|\bshe\b'
 plurals = r'analysts|bankers|consultants|executives|management|participants|officials'
@@ -66,15 +66,16 @@ qs = r'\`\`\"|\'\''
 suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
 news = r'Reuters|'
 
-z = 1
+z = 0
 
-arts = [212]
+arts = [23]
 
 for art in arts:
 #for art in dfa.index:
 
     t1 = time.time()
-    text = str(dfa['LP'][art]) + " " + str(dfa['TD'][art])
+    text = str(dfa['LP'][art]) + str(dfa['TD'][art])
+    #text = str(dfa['LP'][art])
     AN = dfa["AN"][art]
     date = dfa["PD"][art]
     source = dfa["SN"][art]
@@ -85,17 +86,70 @@ for art in arts:
     focfirm = dfa["Firm"][art]
     by = dfa["BY"][art]
     comp = dfa["CO"][art]
+    ##############################################################
+    # Prepocessing the text to let it be analyzed by the Stanza model.
+    ##############################################################
 
-    d = re.findall(r'\(.+\)\s*(--|-)', text, re.IGNORECASE)
-    e = re.findall(r'^.+/\b.+\b/\s*(--|-)', text, re.IGNORECASE)
+    # First, need to remove the dateline: the brief piece of text included in news articles describing
+    # where and when the story was written or filed. Keeping it can erroneiously code one extra
+    # relevant org such as the source (e.g., Reuters) that would mess up the attribution of quotes
+    # in the code below.
 
-    if len(d) > 0:
-        text = re.sub(r'^.+\(.+\)\s*(--|-)', '', text)
+    # A few ways to identify a dateline:
+    d1a = re.findall(r'\(.+\)\s*--', text, re.IGNORECASE)
+    d1b = re.findall(r'\(.+\)\s*-', text, re.IGNORECASE)
+    d2a = re.findall(r'^.+/\b.+\b/\s*--', text, re.IGNORECASE)
+    d2b = re.findall(r'^.+/\b.+\b/\s*-', text, re.IGNORECASE)
+    d3a = re.findall(r'^.+\d\d*\s*--', text, re.IGNORECASE)
+    d3b = re.findall(r'^.+\d\d*\s-', text, re.IGNORECASE)
 
-    elif len(e) > 0:
+    # Iteratively go through these instances. Only do one because could potentially
+    # over cut if run on more than one.
+
+    if len(d1a) > 0:
+        text = re.sub(r'^.+\(.+\)\s*--', '', text)
+
+    elif len(d1b) > 0:
+        text = re.sub(r'^.+\(.+\)\s*-', '', text)
+
+    elif len(d2a) > 0:
+        text = re.sub(r'^.+/\b.+\b/\s*--', '', text)
+
+    elif len(d2b) > 0:
         text = re.sub(r'^.+/\b.+\b/\s*-', '', text)
 
-    # Add if location and
+    elif len(d3a) > 0:
+        text = re.sub(r'^.+\d\d*\s--', '', text)
+
+    elif len(d3b) > 0:
+        text = re.sub(r'^.+\d\d*\s-', '', text)
+
+
+    # Next, remove any parentheses. These mess up the NLP process as they mean something literally
+    # in the PyTorch code.
+    text = re.sub(r'\(|\)', '', text)
+    
+    # Next remove any quotes around a single word (e.g., "great"). These also irratate the nlp program
+    zy = []
+    t = re.findall(r'(' + start + r')(\w+\w)(' + end +r')',text)
+    for w in t:
+        u = ''.join(''.join(elems) for elems in w)
+        y = re.sub(r'[' + qs + r']','', u)
+        z = [u,y]
+        zy.append(z)
+    for w in zy:
+        text = re.sub(r'(' + w[0] + r')',w[1],text)
+    
+    # Next replace multi-dashed words with no dashes.
+    v = re.findall(r'\w+-\w+-\w+',text)
+    for w in v:
+        u = ''.join(''.join(elems) for elems in w)
+        y = re.sub(r'-', '', u)
+        z = [u, y]
+        zy.append(z)
+    for w in zy:
+        text = re.sub(r'(' + w[0] + r')', w[1], text)
+
 
     doc = nlp(text)
 
@@ -131,7 +185,6 @@ for art in arts:
     if len(f) > 0:
         # Go through each sentence to find if it's introducing a person and their role and firm
         for sent in doc.sentences:
-
 
             stence = sent.text
             # Make sure there is something in the sentence. If not, skip.
@@ -327,19 +380,24 @@ for art in arts:
                         a = ''.join(''.join(elems) for elems in a)
                         if len(a) == 0:
                             # Not an acronym, so see if any products in sentence:
-                            # If not, add the org to the list
+                            # If not, see if already in list
                             if len(prod) == 0:
-                                orgs.append(tion)
-                                corgs.append(tion)
+                                if tion not in orgs:
+                                    orgs.append(tion)
+                                    corgs.append(tion)
                             # If not, check if it's not just a brand name with a product after it like Toyota SRV
                             else:
                                 d = []
                                 for p in prod:
                                     c = re.findall(r'' + ent.type + r'\s+' + p + r'', stence)
                                     d = d + c
+                                # If not, then just make sure it's not already in the list.
+                                # If not, append
                                 if len(d) == 0:
-                                    orgs.append(tion)
-                                    corgs.append(tion)
+                                    if tion not in orgs:
+                                        orgs.append(tion)
+                                        corgs.append(tion)
+
 
 
 
@@ -511,7 +569,14 @@ for art in arts:
                                     li.append(o)
                                     gp.append(li)
                                     gp = gp[0]
+
                             gm = ''.join(''.join(elems) for elems in gh)
+
+
+
+
+
+
 
 
                             for o in orgs:
@@ -660,7 +725,7 @@ for art in arts:
                                         role = ""
 
                                         # If whose then title, assign
-                                        if len(e) > 0:
+                                        if len(m) > 0:
                                             person = per
                                             sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                             if len(sfx) > 0:
@@ -683,7 +748,7 @@ for art in arts:
                                                 break
 
                                         # If not, check if [title] "of" near [org]
-                                        elif len(e) == 0:
+                                        elif len(m) == 0:
 
 
                                             z1 = re.findall(
