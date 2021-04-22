@@ -68,7 +68,7 @@ news = r'Reuters|'
 
 z = 0
 
-arts = [23]
+arts = [26]
 
 for art in arts:
 #for art in dfa.index:
@@ -2586,3 +2586,5 @@ df
 
 # TO DO:
 # Former leaders
+# For interviews if 5 sub settings look for Inc, etc. in last one to get the right firm name.
+# Test 25 random ones.
