@@ -10,7 +10,7 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final7.xlsx')
+dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final9.xlsx')
 
 # combine the lead paragraph and the body of the article
 
@@ -53,7 +53,7 @@ l4 = r'president|chair\S+|director|manager|vp|' \
      r'banker\b|specialist\b|accountant\b|journalist\b|reporter\b|analyst\b|consultant\b|negotiator\b|' \
      r'governor\b|congress\S+|house\s+speaker|senator|senior\s+fellow|fellow|undersecretary|' \
      r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|executive\b|aide|pilot|professor|' \
-     r'attorney|minister|secretary|guru|partner|general\s+counsel'
+     r'attorney|minister|secretary|guru|partner|general\s+counsel|mayor'
 
 l5 = r'\bC.O\b|board|administrator'
 
@@ -66,16 +66,19 @@ qs = r'\`\`\"|\'\''
 suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
 news = r'Reuters|'
 
+maxch = str(200)
+
 z = 0
 
-arts = [26]
+#arts = range(18,26)
 
+arts = [24]
 for art in arts:
 #for art in dfa.index:
 
     t1 = time.time()
-    text = str(dfa['LP'][art]) + str(dfa['TD'][art])
-    #text = str(dfa['LP'][art])
+    text = str(dfa['LP'][art]) + '' + str(dfa['TD'][art])
+    #text = str(dfa['TD'][art])
     AN = dfa["AN"][art]
     date = dfa["PD"][art]
     source = dfa["SN"][art]
@@ -96,39 +99,48 @@ for art in arts:
     # in the code below.
 
     # A few ways to identify a dateline:
-    d1a = re.findall(r'\(.+\)\s*--', text, re.IGNORECASE)
-    d1b = re.findall(r'\(.+\)\s*-', text, re.IGNORECASE)
-    d2a = re.findall(r'^.+/\b.+\b/\s*--', text, re.IGNORECASE)
-    d2b = re.findall(r'^.+/\b.+\b/\s*-', text, re.IGNORECASE)
-    d3a = re.findall(r'^.+\d\d*\s*--', text, re.IGNORECASE)
-    d3b = re.findall(r'^.+\d\d*\s-', text, re.IGNORECASE)
+    d1 = re.findall(r'^.{0,' + maxch + r'}\d\d\d\d--', text, re.IGNORECASE)
+    d1a = re.findall(r'^.{0,' + maxch + r'}\(.+\)\s*--', text, re.IGNORECASE)
+    d1b = re.findall(r'^.{0,' + maxch + r'}\(.+\)\s*-', text, re.IGNORECASE)
+    d2a = re.findall(r'^.{0,' + maxch + r'}/\b.+\b/\s*--', text, re.IGNORECASE)
+    d2b = re.findall(r'^.{0,' + maxch + r'}/\b.+\b/\s*-', text, re.IGNORECASE)
+    d3a = re.findall(r'^.{0,' + maxch + r'}\d\d*\s*--', text, re.IGNORECASE)
+    d3b = re.findall(r'^.{0,' + maxch + r'}\d\d*\s-', text, re.IGNORECASE)
+
 
     # Iteratively go through these instances. Only do one because could potentially
     # over cut if run on more than one.
 
-    if len(d1a) > 0:
-        text = re.sub(r'^.+\(.+\)\s*--', '', text)
+    if len(d1) > 0:
+        text = re.sub(r'^.{0,' + maxch + r'}\d\d\d\d--', '', text)
+
+    elif len(d1a) > 0:
+        text = re.sub(r'^.{0,' + maxch + r'}\(.+\)\s*--', '', text)
 
     elif len(d1b) > 0:
-        text = re.sub(r'^.+\(.+\)\s*-', '', text)
+        text = re.sub(r'^.{0,' + maxch + r'}\(.+\)\s*-', '', text)
 
     elif len(d2a) > 0:
-        text = re.sub(r'^.+/\b.+\b/\s*--', '', text)
+        text = re.sub(r'^.{0,' + maxch + r'}/\b.+\b/\s*--', '', text)
 
     elif len(d2b) > 0:
-        text = re.sub(r'^.+/\b.+\b/\s*-', '', text)
+        text = re.sub(r'^.{0,' + maxch + r'}/\b.+\b/\s*-', '', text)
 
     elif len(d3a) > 0:
-        text = re.sub(r'^.+\d\d*\s--', '', text)
+        text = re.sub(r'^.{0,' + maxch + r'}\d\d*\s--', '', text)
 
     elif len(d3b) > 0:
-        text = re.sub(r'^.+\d\d*\s-', '', text)
+        text = re.sub(r'^.{0,' + maxch + r'}\d\d*\s-', '', text)
 
 
-    # Next, remove any parentheses. These mess up the NLP process as they mean something literally
+
+    # Next, remove any instance of a set of non-white-space characters 1-letter parentheses (e.g., "(D)"). These mess up the NLP process as they mean something literally
     # in the PyTorch code.
-    text = re.sub(r'\(|\)', '', text)
-    
+    text = re.sub(r'\(\S+\)', '', text)
+    # Next, remove any of several other characters.
+    text = re.sub(r'[()#/]', '', text)
+    # Next replace * with period. Another issue with nlp
+    text = re.sub(r'\*', r'.', text)
     # Next remove any quotes around a single word (e.g., "great"). These also irratate the nlp program
     zy = []
     t = re.findall(r'(' + start + r')(\w+\w)(' + end +r')',text)
@@ -151,6 +163,8 @@ for art in arts:
         text = re.sub(r'(' + w[0] + r')', w[1], text)
 
 
+    #print(text)
+
     doc = nlp(text)
 
     people = []
@@ -169,6 +183,7 @@ for art in arts:
     mxorg1 = 2
 
     n = 1
+    #Create a count variable for each article that starts at 0 and +1 every time you add to the DF
     dx = 0
 
 
@@ -299,7 +314,7 @@ for art in arts:
 
 
     #####################
-    # Non-transcripts
+    # Non-transcripts (vast majority of instances)
     #####################
     elif len(f) == 0:
 
@@ -571,12 +586,6 @@ for art in arts:
                                     gp = gp[0]
 
                             gm = ''.join(''.join(elems) for elems in gh)
-
-
-
-
-
-
 
 
                             for o in orgs:
@@ -1123,9 +1132,12 @@ for art in arts:
                     per[4] = n
                     sppl.append(per)
 
+
             ############################################################################################
             # NOW YOU HAVE UPDATED YOUR RUNNING LISTS, TAG SENTENCES WITH PEOPLE AND QUOTES, IF APPLICABLE
             ############################################################################################
+
+
             ##################################
             # AT LEAST ONE PERSON IN CUMULATIVE LIST
             ##################################
@@ -1628,7 +1640,10 @@ for art in arts:
                                                              focfirm, by, comp, ment, stence]
                                     dx += 1
 
+
+
                                 elif len(s3) == 0:
+
                                     q1a = re.findall(r'(' + end + r').+(' + stext + r').+(' + last + r')', stence,
                                                      re.IGNORECASE)
                                     q1b = re.findall(r'(' + end + r').+(' + last + r').+(' + stext + r')', stence,
@@ -1816,8 +1831,11 @@ for art in arts:
                                             q2a = re.findall(r'(' + end + r')(.+)', t, re.IGNORECASE)
                                             q2a = ''.join(''.join(elems) for elems in q2a)
                                             break
-                                    # If multi-sentence
+                                    # If multi-sentence quote, check if there's a person in that last sentence
                                     if len(q1) > 0:
+
+
+
                                         z1 = re.findall(r'(' + l1 + r')', q2a, re.IGNORECASE)
                                         z2 = re.findall(r'(' + l2 + r')', q2a, re.IGNORECASE)
                                         z3 = re.findall(r'(' + l3 + r')', q2a, re.IGNORECASE)
@@ -2441,6 +2459,7 @@ for art in arts:
                                                                          subjects, misc, industries, focfirm, by,
                                                                          comp, ment, stence]
                                                 dx += 1
+
                         # if no quote, see if beginning of multi-sentence quote:
                         elif len(s) == 0:
                             # check if a quote begins in this sentence:
@@ -2454,6 +2473,9 @@ for art in arts:
 
                             # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
                             if len(q1) > 0:
+                                # set last sentence index to 0. Will shift to the value of s below
+                                # and use later if necessary.
+                                nm = 0
                                 q2a = ""
                                 for s in range(n, len(doc.sentences)):
                                     j = doc.sentences[s]
@@ -2467,6 +2489,8 @@ for art in arts:
                                         q1 = q1 + " " + q2
                                         q2a = re.findall(r'(' + end + r')(.+)', t, re.IGNORECASE)
                                         q2a = ''.join(''.join(elems) for elems in q2a)
+                                        # remember index of the last sentence.
+                                        nm = s
                                         break
                                 q1 = re.sub(r'(' + qs + r')', '', q1)
                                 z1 = re.findall(r'(' + l1 + r')', q2a, re.IGNORECASE)
@@ -2477,11 +2501,14 @@ for art in arts:
                                 m = z1 + z2 + z3 + z4 + z5
 
                                 z = ''.join(''.join(elems) for elems in m)
+
+                                print(n,q2a)
                                 if len(z) > 0:
                                     # was information tied to previous sentence.
                                     # You should attribute this quote to the person (a partial profile)
                                     # attributed to the previous sentence.
                                     # Check if there's something in DF:
+
                                     if dx>0:
                                         s = df.loc[len(df.index) - 1].at['sent']
                                         t = n - int(s)
@@ -2506,6 +2533,113 @@ for art in arts:
                                                                      subjects, misc, industries, focfirm, by, comp,
                                                                      ment, stence]
                                             dx += 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                    # If multi sentence, but nothing in DF yet, you need to check if there's
+                                    # any people, orgs, etc. in the last sentence. So go through the same
+                                    # process as a tthe beginning of the code but only on the last sentence
+                                    # of the multi-sentence quote.
+                                    """
+                                    elif dx ==0:
+                                        if nm > 0 & len(q2a)>0:
+                                            j = doc.sentences[s]
+                                            for ent in j.ents:
+                                                if ent.type == "PERSON":
+                                                    z = re.findall(r'' + ent.text + r'', q2a)
+                                                    if len(z) > 0:
+                                                        ppl.append(ent.text)
+                                                        sfx = re.findall(r'(' + suf + r')', ent.text, re.IGNORECASE)
+                                                        if len(sfx) > 0:
+
+                                                            l = ent.text.split()[-2]
+                                                            lasts.append(l)
+                                                        elif len(sfx) == 0:
+                                                            l = ent.text.split()[-1]
+                                                            lasts.append(l)
+                                                # Next the products, to be used for the orgs
+                                            for ent in sent.ents:
+                                                if ent.type == "PRODUCT":
+                                                    pduct = ent.text
+                                                    # remove odd punctuation such as ")" that can mess up the regex down the line
+                                                    pduct = re.sub(r'\(|\)', '', pduct)
+                                                    z = re.findall(r'' + pduct + r'', q2a)
+                                                    if len(z) > 0:
+                                                        prod.append(pduct)
+                                                # Finally, the orgs
+                                            for ent in sent.ents:
+                                                if ent.type == "ORG":
+                                                    tion = ent.text
+                                                    # remove odd punctuation such as ")" that can mess up the regex down the line
+                                                    tion = re.sub(r'\(|\)|\-', '', tion)
+                                                    z = re.findall(r'' + tion + r'', q2a)
+                                                    if len(z) > 0:
+                                                        # don't include acronyms
+                                                        a = re.findall(r'\(\s*' + tion + r'\s*\)', q2a)
+                                                        a = ''.join(''.join(elems) for elems in a)
+                                                        if len(a) == 0:
+                                                            # Not an acronym, so see if any products in sentence:
+                                                            # If not, see if already in list
+                                                            if len(prod) == 0:
+                                                                if tion not in orgs:
+                                                                    orgs.append(tion)
+                                                                    corgs.append(tion)
+                                                            # If not, check if it's not just a brand name with a product after it like Toyota SRV
+                                                            else:
+                                                                d = []
+                                                                for p in prod:
+                                                                    c = re.findall(r'' + ent.type + r'\s+' + p + r'',
+                                                                                   q2a)
+                                                                    d = d + c
+                                                                # If not, then just make sure it's not already in the list.
+                                                                # If not, append
+                                                                if len(d) == 0:
+                                                                    if tion not in orgs:
+                                                                        orgs.append(tion)
+                                                                        corgs.append(tion)
+
+
+
+                                        nu = re.findall()
+
+                                        quote = q1
+                                        last = df.loc[len(df.index) - 1].at['last']
+                                        person = df.loc[len(df.index) - 1].at['person']
+                                        firm = df.loc[len(df.index) - 1].at['firm']
+                                        role = ""
+                                        for i in m:
+                                            j = ''.join(''.join(elems) for elems in i)
+                                            role = re.sub(r',', '', j)
+                                            if len(role) > 0:
+                                                break
+                                        qtype = "multi-sentence quote"
+                                        qsaid = "maybe"
+                                        qpref = "no"
+                                        comment = "Title of previous partial profile person"
+                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
+                                                                 qsaid,
+                                                                 qpref, comment, AN, date, source, regions,
+                                                                 subjects, misc, industries, focfirm, by, comp,
+                                                                 ment, stence]
+                                        dx += 1
+                                        """
                                 # If not, check for pronouns in last sentence
                                 elif len(z) == 0:
                                     s4a = re.findall(r'' + pron + r'.+' + stext + r'', q2a, re.IGNORECASE)
