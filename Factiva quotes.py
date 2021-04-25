@@ -10,7 +10,7 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final9.xlsx')
+dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
 
 # combine the lead paragraph and the body of the article
 
@@ -26,8 +26,6 @@ t0 = time.time()
 
 # get the article slice
 #dfa = pd.read_pickle(INFILE)[int(STARTROW): int(ENDROW)]
-
-# combine the lead paragraph and the body of the article
 
 columns = ['sent', 'person', 'last', 'role', 'firm', 'quote', 'qtype', 'qsaid', 'qpref', 'comment', 'AN', 'date',
            'source', 'regions', 'subjects', 'misc', 'industries', 'focfirm', 'by', 'comp', 'sentiment', 'sentence']
@@ -68,27 +66,54 @@ news = r'Reuters|'
 
 maxch = str(200)
 
+
+# Create a class in which to place variables and then create a function that will place all the variables
+# in a df row.
+class Features:
+    def __init__(self):
+        self.df = self.qtype = self.qsaid = self.qpref = self.comment = self.n= self.person = \
+        self.last = self.role = self.firm = self.quote = self.AN = self.date = self.source = \
+        self.regions = self.subjects = self.misc = self.industries = self.focfirm = self.by = \
+        self.comp = self.ment = self.stence = None
+
+    def todf(self):
+        df.loc[len(df.index)] = [self.n, self.person, self.last, self.role, self.firm, self.quote, self.qtype,
+                                           self.qsaid, self.qpref, self.comment, self.AN, self.date, self.source,
+                                           self.regions, self.subjects, self.misc, self.industries, self.focfirm,
+                                           self.by, self.comp, self.ment, self.stence]
+#Initation this class
+h = Features()
+
+# combine the lead paragraph and the body of the article
+
+
+
+
+
+
+
+
 z = 0
 
 #arts = range(18,26)
 
-arts = [26]
+arts = [2]
 for art in arts:
 #for art in dfa.index:
 
     t1 = time.time()
     text = str(dfa['LP'][art]) + '' + str(dfa['TD'][art])
     #text = str(dfa['TD'][art])
-    AN = dfa["AN"][art]
-    date = dfa["PD"][art]
-    source = dfa["SN"][art]
-    regions = dfa["RE"][art]
-    subjects = dfa["NS"][art]
-    misc = dfa["IPD"][art]
-    industries = dfa["IN"][art]
-    focfirm = dfa["Firm"][art]
-    by = dfa["BY"][art]
-    comp = dfa["CO"][art]
+    h.AN = dfa["AN"][art]
+    h.date = dfa["PD"][art]
+    h.source = dfa["SN"][art]
+    h.regions = dfa["RE"][art]
+    h.subjects = dfa["NS"][art]
+    h.misc = dfa["IPD"][art]
+    h.industries = dfa["IN"][art]
+    h.focfirm = dfa["Firm"][art]
+    h.by = dfa["BY"][art]
+    h.comp = dfa["CO"][art]
     ##############################################################
     # Prepocessing the text to let it be analyzed by the Stanza model.
     ##############################################################
@@ -141,20 +166,23 @@ for art in arts:
     text = re.sub(r'[()#/]', '', text)
     # Next replace * with period. Another issue with nlp
     text = re.sub(r'\*', r'.', text)
+
     # Next remove any quotes around a single word (e.g., "great"). These also irratate the nlp program
     zy = []
-    t = re.findall(r'(' + start + r')(\w+\w)(' + end +r')',text)
+    t = re.findall(r'(' + start + r')(\w+\w)(' + end + r')', text)
     for w in t:
         u = ''.join(''.join(elems) for elems in w)
-        y = re.sub(r'[' + qs + r']','', u)
-        z = [u,y]
+        y = re.sub(r'[' + qs + r']', '', u)
+        z = [u, y]
         zy.append(z)
     for w in zy:
-        text = re.sub(r'(' + w[0] + r')',w[1],text)
-    
+        text = re.sub(r'(' + w[0] + r')', w[1], text)
+
+
     # Next replace multi-dashed words with no dashes.
-    v = re.findall(r'\w+-\w+-\w+',text)
-    for w in v:
+    zy = []
+    t = re.findall(r'\w+-\w+-\w+', text)
+    for w in t:
         u = ''.join(''.join(elems) for elems in w)
         y = re.sub(r'-', '', u)
         z = [u, y]
@@ -162,8 +190,6 @@ for art in arts:
     for w in zy:
         text = re.sub(r'(' + w[0] + r')', w[1], text)
 
-
-    #print(text)
 
     doc = nlp(text)
 
@@ -194,7 +220,6 @@ for art in arts:
     dfsent = pd.DataFrame(columns=columns)
 
 
-
     # Look through document and see if has instances of at least four all-cap words
     # broken up by non-word characters (e.g., spaces, commas) followed by a colon.
     f = re.findall(r'(((\b[A-Z]+\b\W*){4,})\:)', text)
@@ -222,12 +247,12 @@ for art in arts:
                 person = ""
                 firm = ""
                 # Check if name title in the sentence:
-                g = re.findall(r'(((\b[A-Z]+\b\W*){4,})\:)', stence)
+                g = re.findall(r'(((\b[A-Z]+\b\W*){4,}):)', stence)
                 if len(g) > 0:
                     a = g[0][0]
                     a = re.sub(r':', '', a)
                     # If company name is Inc and has a comma, remove the comma
-                    a = re.sub('\,\s+(INC|Inc)', ' Inc', a, re.IGNORECASE)
+                    a = re.sub(',\s+(INC|Inc)', ' Inc', a, re.IGNORECASE)
                     p = a.split(',')
 
                     person = p[0]
@@ -274,19 +299,16 @@ for art in arts:
                             l = re.findall(r'' + last + r':', stence, re.IGNORECASE)
                             if len(l) > 0:
                                 # Strip the beginning with the quote.
-                                quote = re.sub(r'^.*' + last + r':', '', stence)
-                                last = per[0]
-                                person = per[1]
-                                firm = per[2]
-                                role = per[3]
-                                qtype = "Transcript"
-                                qsaid = "yes"
-                                qpref = "yes"
-                                comment = "Transcript"
-                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment,
-                                                         AN, date, source, regions, subjects, misc, industries,
-                                                         focfirm, by, comp, ment, stence]
+                                h.quote = re.sub(r'^.*' + last + r':', '', stence)
+                                h.last = per[0]
+                                h.person = per[1]
+                                h.firm = per[2]
+                                h.role = per[3]
+                                h.qtype = "Transcript"
+                                h.qsaid = "yes"
+                                h.qpref = "yes"
+                                h.comment = "Transcript"
+                                h.todf()
                                 dx += 1
                                 # Add this person to the running list of sequential people speaking
                                 sppl.append(per)
@@ -298,20 +320,16 @@ for art in arts:
                         # Are there any people in the people list yet?
                         # If so, then the sentence belongs to the last person assigned.
                         if len(people) > 0:
-                            quote = re.sub(r'^.*' + last + r':', '', stence)
-                            last = sppl[-1][0]
-                            person = sppl[-1][1]
-                            firm = sppl[-1][2]
-                            role = sppl[-1][3]
-                            qtype = "Transcript"
-                            qsaid = "yes"
-                            qpref = "yes"
-                            comment = "Transcript"
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment,
-                                                     AN, date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.quote = re.sub(r'^.*' + last + r':', '', stence)
+                            h.last = sppl[-1][0]
+                            h.person = sppl[-1][1]
+                            h.firm = sppl[-1][2]
+                            h.role = sppl[-1][3]
+                            h.qtype = "Transcript"
+                            h.qsaid = "yes"
+                            h.qpref = "yes"
+                            h.comment = "Transcript"
+                            h.todf()
                             dx += 1
                 n += 1
 
@@ -547,8 +565,10 @@ for art in arts:
                     # If the title is mentioned, move to next step
                     if len(pos) > 0:
 
+
                         # If there is just one organization mentioned, assign
                         if len(orgs) == 1:
+                            print (n, orgs)
                             org = orgs[0]
                             org = org.replace(r"'s", "")
                             org1 = re.findall(r'(' + per + r').+(' + org + r')', stz4, re.IGNORECASE)
@@ -1153,7 +1173,7 @@ for art in arts:
 
 
         ############################################################################################
-        # NOW YOU HAVE THE LIST, TAG SENTENCES WITH PEOPLE AND QUOTES, IF APPLICABLE
+        # NOW YOU HAVE THE LIST, TAG SENTENCES WITH PEOPLE AND QUOTES
         ############################################################################################
         # Reset count variables
         n = 1
@@ -1161,6 +1181,7 @@ for art in arts:
         for se in dfsent.index:
             # Assign the various lists and variables for this sentence from the dfsent dataframe
             stence = dfsent["stence"][se]
+            h.stence = stence
             stz4 = dfsent["stz4"][se]
             ment = dfsent["ment"][se]
             orgs = dfsent["orgs"][se]
@@ -1173,7 +1194,6 @@ for art in arts:
             # AT LEAST ONE PERSON IN CUMULATIVE LIST
             ##################################
             if len(people) > 0:
-
                 ##################################
                 # SENTENCES WITH A "SAID" EQUIVALENT
                 ##################################
@@ -1205,20 +1225,36 @@ for art in arts:
                                 k = re.sub(r'(' + qs + r')', '', k)
                                 if len(k) > 0:
 
-                                    quote = x1
-                                    last = sppl[-1][0]
-                                    person = sppl[-1][1]
-                                    firm = sppl[-1][2]
-                                    role = sppl[-1][3]
-                                    qtype = "single sentence quote"
-                                    qsaid = "yes"
-                                    qpref = "no"
-                                    comment = "pronoun"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.quote = x1
+                                    h.last = sppl[-1][0]
+                                    h.person = sppl[-1][1]
+                                    h.firm = sppl[-1][2]
+                                    h.role = sppl[-1][3]
+                                    h.qtype = "single sentence quote"
+                                    h.qsaid = "yes"
+                                    h.qpref = "no"
+                                    h.comment = "pronoun"
+
+                                    h.todf()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
                                     dx += 1
                                 # If said equiv and quote, but no people or pronoun, check if organization listed, as in "BMW's spokesman said..."
                                 elif len(k) == 0:
@@ -1231,50 +1267,44 @@ for art in arts:
                                         k = ''.join(''.join(elems) for elems in k)
                                         k = re.sub(r'(' + qs + r')', '', k)
                                         if len(k) > 0:
-                                            last = "NA"
+                                            h.last = "NA"
                                             # The person would be the representative's reference, removing the org name
-                                            person = "NA"
-                                            firm = org
-                                            role = re.sub(r'' + org + '', '', k)
-                                            quote = x1
-                                            qtype = "single sentence quote"
-                                            qsaid = "yes"
-                                            qpref = "no"
-                                            comment = "Org representative"
-                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                     qsaid,
-                                                                     qpref,
-                                                                     comment, AN, date, source, regions, subjects,
-                                                                     misc, industries, focfirm, by, comp, ment,
-                                                                     stence]
+                                            h.person = "NA"
+                                            h.firm = org
+                                            h.role = re.sub(r'' + org + '', '', k)
+                                            h.quote = x1
+                                            h.qtype = "single sentence quote"
+                                            h.qsaid = "yes"
+                                            h.qpref = "no"
+                                            h.comment = "Org representative"
+                                            h.todf()
                                             dx += 1
+
+
                                         elif len(k) == 0:
-                                            last = "NA"
-                                            person = "NA"
-                                            firm = org
-                                            role = "NA"
-                                            quote = x1
-                                            qtype = "single sentence quote"
-                                            qsaid = "yes"
-                                            qpref = "no"
-                                            comment = "from org, nondiscriptives"
-                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                     qsaid,
-                                                                     qpref,
-                                                                     comment, AN, date, source, regions, subjects,
-                                                                     misc, industries, focfirm, by, comp, ment,
-                                                                     stence]
+                                            h.last = "NA"
+                                            h.person = "NA"
+                                            h.firm = org
+                                            h.role = "NA"
+                                            h.quote = x1
+                                            h.qtype = "single sentence quote"
+                                            h.qsaid = "yes"
+                                            h.qpref = "no"
+                                            h.comment = "from org, nondiscriptives"
+                                            h.todf()
                                             dx += 1
                                     elif len(orgs) > 1:
-                                        last = "NA"
-                                        person = "NA"
-                                        firm = ''.join(''.join(elems) for elems in orgs)
-                                        role = "NA"
-                                        quote = x1
-                                        qtype = "Information - non-discript single sentence quote"
-                                        qsaid = "yes"
-                                        qpref = "no"
-                                        comment = "Review - from nondiscriptives"
+
+                                        h.last = "NA"
+                                        h.person = "NA"
+                                        h.firm = ''.join(''.join(elems) for elems in orgs)
+                                        h.role = "NA"
+                                        h.quote = x1
+                                        h.qtype = "Information - non-discript single sentence quote"
+                                        h.qsaid = "yes"
+                                        h.qpref = "no"
+                                        h.comment = "Review - from nondiscriptives"
+                                        h.todf()
                                     elif len(orgs) == 0:
                                         # if there is a said equivalent and quote but no person, no org, and no pronoun
                                         # near said equivalent, check if pronoun further back from said equiv.
@@ -1307,20 +1337,16 @@ for art in arts:
 
                                             # If person in the previous sentence, use that one
                                             if l == 1:
-                                                quote = x1
-                                                last = sppl[-1][0]
-                                                person = sppl[-1][1]
-                                                firm = sppl[-1][2]
-                                                role = sppl[-1][3]
-                                                qtype = "single sentence quote"
-                                                qsaid = "yes"
-                                                qpref = "no"
-                                                comment = "pronoun"
-                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                         qsaid,
-                                                                         qpref, comment, AN, date, source, regions,
-                                                                         subjects, misc, industries, focfirm, by,
-                                                                         comp, ment, stence]
+                                                h.quote = x1
+                                                h.last = sppl[-1][0]
+                                                h.person = sppl[-1][1]
+                                                h.firm = sppl[-1][2]
+                                                h.role = sppl[-1][3]
+                                                h.qtype = "single sentence quote"
+                                                h.qsaid = "yes"
+                                                h.qpref = "no"
+                                                h.comment = "pronoun"
+                                                h.todf()
                                                 dx += 1
                                             # if no person in previous sentence, then check if quote in previous sentence
                                             elif l > 1:
@@ -1329,22 +1355,16 @@ for art in arts:
                                                     s = df.loc[len(df.index) - 1].at['sent']
                                                     t = n - int(s)
                                                     if t == 1:
-                                                        quote = x1
-                                                        last = df.loc[len(df.index) - 1].at['last']
-                                                        person = df.loc[len(df.index) - 1].at['person']
-                                                        firm = df.loc[len(df.index) - 1].at['firm']
-                                                        role = df.loc[len(df.index) - 1].at['role']
-                                                        qtype = "single sentence quote"
-                                                        qsaid = "yes"
-                                                        qpref = "no"
-                                                        comment = "pronoun - reference partial profile"
-                                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote,
-                                                                                 qtype,
-                                                                                 qsaid,
-                                                                                 qpref, comment, AN, date, source,
-                                                                                 regions, subjects, misc,
-                                                                                 industries, focfirm, by, comp,
-                                                                                 ment, stence]
+                                                        h.quote = x1
+                                                        h.last = df.loc[len(df.index) - 1].at['last']
+                                                        h.person = df.loc[len(df.index) - 1].at['person']
+                                                        h.firm = df.loc[len(df.index) - 1].at['firm']
+                                                        h.role = df.loc[len(df.index) - 1].at['role']
+                                                        h.qtype = "single sentence quote"
+                                                        h.qsaid = "yes"
+                                                        h.qpref = "no"
+                                                        h.comment = "pronoun - reference partial profile"
+                                                        h.todf()
                                                         dx += 1
 
 
@@ -1354,20 +1374,16 @@ for art in arts:
                                 m = re.findall(r'(' + plurals + r')', stz4, re.IGNORECASE)
 
                                 if len(m) > 0:
-                                    last = "NA"
-                                    person = "NA"
-                                    firm = "NA"
-                                    role = ''.join(''.join(elems) for elems in m)
-                                    quote = stence
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "no"
-                                    comment = "from plural individuals"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.last = "NA"
+                                    h.person = "NA"
+                                    h.firm = "NA"
+                                    h.role = ''.join(''.join(elems) for elems in m)
+                                    h.quote = stence
+                                    h.qtype = "paraphrase"
+                                    h.qsaid = "yes"
+                                    h.qpref = "no"
+                                    h.comment = "from plural individuals"
+                                    h.todf()
                                     dx += 1
 
 
@@ -1385,19 +1401,16 @@ for art in arts:
                                     k = ''.join(''.join(elems) for elems in k)
                                     k = re.sub(r'(' + qs + r')', '', k)
                                     if len(k) > 0:
-                                        quote = stence
-                                        last = sppl[-1][0]
-                                        person = sppl[-1][1]
-                                        firm = sppl[-1][2]
-                                        role = sppl[-1][3]
-                                        qtype = "paraphrase"
-                                        qsaid = "yes"
-                                        qpref = "no"
-                                        comment = "pronoun"
-                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                 qpref,
-                                                                 comment, AN, date, source, regions, subjects, misc,
-                                                                 industries, focfirm, by, comp, ment, stence]
+                                        h.quote = stence
+                                        h.last = sppl[-1][0]
+                                        h.person = sppl[-1][1]
+                                        h.firm = sppl[-1][2]
+                                        h.role = sppl[-1][3]
+                                        h.qtype = "paraphrase"
+                                        h.qsaid = "yes"
+                                        h.qpref = "no"
+                                        h.comment = "pronoun"
+                                        h.todf()
                                         dx += 1
 
 
@@ -1418,20 +1431,31 @@ for art in arts:
                                             p1 = p1a + p1b + p1c + p1d + p1e
                                             p1 = ''.join(''.join(elems) for elems in p1)
                                             if len(p1) > 0:
-                                                quote = stence
-                                                last = sppl[-1][0]
-                                                person = sppl[-1][1]
-                                                firm = sppl[-1][2]
-                                                role = sppl[-1][3]
-                                                qtype = "paraphrase"
-                                                qsaid = "yes"
-                                                qpref = "no"
-                                                comment = "title reference"
-                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                         qsaid, qpref,
-                                                                         comment, AN, date, source, regions,
-                                                                         subjects, misc, industries, focfirm, by,
-                                                                         comp, ment, stence]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                h.quote = stence
+                                                h.last = sppl[-1][0]
+                                                h.person = sppl[-1][1]
+                                                h.firm = sppl[-1][2]
+                                                h.role = sppl[-1][3]
+                                                h.qtype = "paraphrase"
+                                                h.qsaid = "yes"
+                                                h.qpref = "no"
+                                                h.comment = "title reference"
+                                                h.todf()
                                                 dx += 1
                                             elif len(p1) == 0:
                                                 # see if it's a representative of a firm
@@ -1446,66 +1470,46 @@ for art in arts:
                                                         m = ''.join(''.join(elems) for elems in m)
                                                         m = re.sub(r'(' + org + r')', '', m)
                                                         if len(m) > 0:
-                                                            last = "NA"
-                                                            person = "NA"
-                                                            firm = org
-                                                            role = m
-                                                            qtype = "paraphrase"
-                                                            qsaid = "yes"
-                                                            qpref = "one or more firms"
-                                                            comment = "a firm representative said something"
-                                                            quote = stence
-                                                            df.loc[len(df.index)] = [n, person, last, role, firm,
-                                                                                     quote,
-                                                                                     qtype,
-                                                                                     qsaid,
-                                                                                     qpref, comment,
-                                                                                     AN, date, source, regions,
-                                                                                     subjects, misc, industries,
-                                                                                     focfirm, by, comp, ment,
-                                                                                     stence]
+                                                            h.last = "NA"
+                                                            h.person = "NA"
+                                                            h.firm = org
+                                                            h.role = m
+                                                            h.qtype = "paraphrase"
+                                                            h.qsaid = "yes"
+                                                            h.qpref = "one or more firms"
+                                                            h.comment = "a firm representative said something"
+                                                            h.quote = stence
+                                                            h.todf()
                                                             dx += 1
                                                         # If not a rep, see if just one company
                                                         # If so, the company said something
                                                         elif len(m) == 0:
                                                             if len(orgs) == 1:
-                                                                quote = stence
-                                                                last = "NA"
-                                                                person = "NA"
-                                                                firm = org
-                                                                role = "NA"
-                                                                qtype = "paraphrase"
-                                                                qsaid = "yes"
-                                                                qpref = "no"
-                                                                comment = 'One firm said something'
-                                                                df.loc[len(df.index)] = [n, person, last, role,
-                                                                                         firm, quote,
-                                                                                         qtype, qsaid, qpref,
-                                                                                         comment, AN, date, source,
-                                                                                         regions, subjects, misc,
-                                                                                         industries, focfirm, by,
-                                                                                         comp, ment, stence]
+                                                                h.quote = stence
+                                                                h.last = "NA"
+                                                                h.person = "NA"
+                                                                h.firm = org
+                                                                h.role = "NA"
+                                                                h.qtype = "paraphrase"
+                                                                h.qsaid = "yes"
+                                                                h.qpref = "no"
+                                                                h.comment = 'One firm said something'
+                                                                h.todf()
                                                                 dx += 1
                                                             # If not, see if multiple companies
                                                             # If so, add line for each org and said, but flag to review
                                                             elif len(orgs) > 1:
                                                                 for org in orgs:
-                                                                    quote = stence
-                                                                    last = "NA"
-                                                                    person = "NA"
-                                                                    firm = org
-                                                                    role = "NA"
-                                                                    qtype = "paraphrase"
-                                                                    qsaid = "yes"
-                                                                    qpref = "no"
-                                                                    comment = "Review - paraphrase from multiple firms"
-                                                                    df.loc[len(df.index)] = [n, person, last, role,
-                                                                                             firm, quote,
-                                                                                             qtype, qsaid, qpref,
-                                                                                             comment, AN, date, source,
-                                                                                             regions, subjects, misc,
-                                                                                             industries, focfirm, by,
-                                                                                             comp, ment, stence]
+                                                                    h.quote = stence
+                                                                    h.last = "NA"
+                                                                    h.person = "NA"
+                                                                    h.firm = org
+                                                                    h.role = "NA"
+                                                                    h.qtype = "paraphrase"
+                                                                    h.qsaid = "yes"
+                                                                    h.qpref = "no"
+                                                                    h.comment = "Review - paraphrase from multiple firms"
+                                                                    h.todf()
                                                                     dx += 1
 
 
@@ -1535,20 +1539,16 @@ for art in arts:
                                         if len(q2) > 0:
                                             q1 = q1 + " " + q2
                                             break
-                                    quote = q1
-                                    last = sppl[-1][0]
-                                    person = sppl[-1][1]
-                                    firm = sppl[-1][2]
-                                    role = sppl[-1][3]
-                                    qtype = "multi-sentence quote"
-                                    qsaid = "yes"
-                                    qpref = "no"
-                                    comment = "high accuracy"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.quote = q1
+                                    h.last = sppl[-1][0]
+                                    h.person = sppl[-1][1]
+                                    h.firm = sppl[-1][2]
+                                    h.role = sppl[-1][3]
+                                    h.qtype = "multi-sentence quote"
+                                    h.qsaid = "yes"
+                                    h.qpref = "no"
+                                    h.comment = "high accuracy"
+                                    h.todf()
                                     dx += 1
 
 
@@ -1558,7 +1558,7 @@ for art in arts:
                         # ONE AND ONLY ONE PEOPLE REFERENCE
                         ##################################
 
-                        last = prows[0][0]
+                        h.last = prows[0][0]
 
                         # Check for FULL quotes:
                         # first check for the FULL quote after the said equivalent
@@ -1588,20 +1588,16 @@ for art in arts:
 
                             quote = s1
                             quote = re.sub(r'^' + stext + r'.+', '', quote)
-                            quote = re.sub(r'' + stext + r'\Z', '', quote)
-                            last = prows[0][0]
-                            person = prows[0][1]
-                            firm = prows[0][2]
-                            role = prows[0][3]
-                            qtype = "single sentence quote"
-                            qsaid = "yes"
-                            qpref = "single"
-                            comment = "high accuracy"
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment,
-                                                     AN, date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                            h.last = prows[0][0]
+                            h.person = prows[0][1]
+                            h.firm = prows[0][2]
+                            h.role = prows[0][3]
+                            h.qtype = "single sentence quote"
+                            h.qsaid = "yes"
+                            h.qpref = "single"
+                            h.comment = "high accuracy"
+                            h.todf()
                             dx += 1
 
 
@@ -1630,19 +1626,16 @@ for art in arts:
                                     if len(q2) > 0:
                                         q1 = q1 + " " + q2
                                         break
-                                quote = q1
-                                last = prows[0][0]
-                                person = prows[0][1]
-                                firm = prows[0][2]
-                                role = prows[0][3]
-                                qtype = "multi-sentence quote"
-                                qsaid = "yes"
-                                qpref = "single"
-                                comment = "high accuracy"
-                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN,
-                                                         date, source, regions, subjects, misc, industries, focfirm,
-                                                         by, comp, ment, stence]
+                                h.quote = q1
+                                h.last = prows[0][0]
+                                h.person = prows[0][1]
+                                h.firm = prows[0][2]
+                                h.role = prows[0][3]
+                                h.qtype = "multi-sentence quote"
+                                h.qsaid = "yes"
+                                h.qpref = "single"
+                                h.comment = "high accuracy"
+                                h.todf()
                                 dx += 1
                             # Check if the name is actually inside the quote
                             # If so, the speaker should be the previous referenced person
@@ -1653,22 +1646,18 @@ for art in arts:
                                 s3 = re.sub(r'(' + qs + r')', '', s3)
 
                                 if len(s3) > 0:
-                                    last = sppl[-1][0]
-                                    person = sppl[-1][1]
-                                    firm = sppl[-1][2]
-                                    role = sppl[-1][3]
+                                    h.last = sppl[-1][0]
+                                    h.person = sppl[-1][1]
+                                    h.firm = sppl[-1][2]
+                                    h.role = sppl[-1][3]
                                     quote = s3
                                     quote = re.sub(r'^' + stext + r'.+', '', quote)
-                                    quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                    qtype = "single sentence quote"
-                                    qsaid = "yes"
-                                    qpref = "single"
-                                    comment = "Other person within the quote"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                                    h.qtype = "single sentence quote"
+                                    h.qsaid = "yes"
+                                    h.qpref = "single"
+                                    h.comment = "Other person within the quote"
+                                    h.todf()
                                     dx += 1
 
 
@@ -1693,19 +1682,16 @@ for art in arts:
                                         df.loc[len(df.index) - 1].at['role'] = prows[0][3]
 
                                     elif len(q1) == 0:
-                                        quote = stence
-                                        last = prows[0][0]
-                                        person = prows[0][1]
-                                        firm = prows[0][2]
-                                        role = prows[0][3]
-                                        qtype = "paraphrase"
-                                        qsaid = "yes"
-                                        qpref = "single"
-                                        comment = "high accuracy"
-                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                 qpref,
-                                                                 comment, AN, date, source, regions, subjects, misc,
-                                                                 industries, focfirm, by, comp, ment, stence]
+                                        h.quote = stence
+                                        h.last = prows[0][0]
+                                        h.person = prows[0][1]
+                                        h.firm = prows[0][2]
+                                        h.role = prows[0][3]
+                                        h.qtype = "paraphrase"
+                                        h.qsaid = "yes"
+                                        h.qpref = "single"
+                                        h.comment = "high accuracy"
+                                        h.todf()
                                         dx += 1
 
 
@@ -1715,10 +1701,10 @@ for art in arts:
                         # MORE THAN ONE PEOPLE REFERENCED
                         ##################################
                         for per in prows:
-                            last = per[0]
-                            person = per[1]
-                            firm = per[2]
-                            role = per[3]
+                            h.last = per[0]
+                            h.person = per[1]
+                            h.firm = per[2]
+                            h.role = per[3]
                             # Check if full quote
                             # Quote then said-equivalent is within three spaces of last name
                             s1a = re.findall(
@@ -1737,15 +1723,12 @@ for art in arts:
                             if len(s1) > 0:
                                 quote = s1
                                 quote = re.sub(r'^' + stext + r'.+', '', quote)
-                                quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                qtype = "single sentence quote"
-                                qsaid = "yes"
-                                qpref = "multiple"
-                                comment = "review"
-                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN,
-                                                         date, source, regions, subjects, misc, industries, focfirm,
-                                                         by, comp, ment, stence]
+                                h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                                h.qtype = "single sentence quote"
+                                h.qsaid = "yes"
+                                h.qpref = "multiple"
+                                h.comment = "review"
+                                h.todf()
                                 dx += 1
                             # check if a quote begins in this sentence:
                             elif len(s1) == 0:
@@ -1776,28 +1759,20 @@ for art in arts:
                                             break
                                     quote = q1
                                     quote = re.sub(r'^' + stext + r'.+', '', quote)
-                                    quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                    qtype = "multi-sentence quote"
-                                    qsaid = "yes"
-                                    qpref = "multiple"
-                                    comment = "review"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                                    h.qtype = "multi-sentence quote"
+                                    h.qsaid = "yes"
+                                    h.qpref = "multiple"
+                                    h.comment = "review"
+                                    h.todf()
                                     dx += 1
                                 elif len(q1) == 0:
-                                    quote = stence
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "multiple"
-                                    comment = "review"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.quote = stence
+                                    h.qtype = "paraphrase"
+                                    h.qsaid = "yes"
+                                    h.qpref = "multiple"
+                                    h.comment = "review"
+                                    h.todf()
                                     dx += 1
 
 
@@ -1819,20 +1794,16 @@ for art in arts:
                         if len(x1) > 0:
                             quote = x1
                             quote = re.sub(r'^' + stext + r'.+', '', quote)
-                            quote = re.sub(r'' + stext + r'\Z', '', quote)
-                            last = sppl[-1][0]
-                            person = sppl[-1][1]
-                            firm = sppl[-1][2]
-                            role = sppl[-1][3]
-                            qtype = "single sentence quote"
-                            qsaid = "no"
-                            qpref = "no"
-                            comment = "Quote with at least two words inside"
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment,
-                                                     AN, date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                            h.last = sppl[-1][0]
+                            h.person = sppl[-1][1]
+                            h.firm = sppl[-1][2]
+                            h.role = sppl[-1][3]
+                            h.qtype = "single sentence quote"
+                            h.qsaid = "no"
+                            h.qpref = "no"
+                            h.comment = "Quote with at least two words inside"
+                            h.todf()
                             dx += 1
                         # Because no said equiv or full quote, check if it's a beginning of multi-sentence quote
                         elif len(x1) == 0:
@@ -1879,43 +1850,34 @@ for art in arts:
                                         q1 = re.sub(r'(' + qs + r')', '', q1)
 
                                         if len(z) > 0:
-                                            quote = q1
-                                            last = "NA"
-                                            person = "NA"
-                                            firm = "NA"
-                                            role = ""
+                                            h.quote = q1
+                                            h.last = "NA"
+                                            h.person = "NA"
+                                            h.firm = "NA"
+                                            h.role = ""
                                             for i in m:
                                                 j = ''.join(''.join(elems) for elems in i)
-                                                role = re.sub(r',', '', j)
-                                                if len(role) > 0:
+                                                h.role = re.sub(r',', '', j)
+                                                if len(h.role) > 0:
                                                     break
-                                            qtype = "multi-sentence quote"
-                                            qsaid = "no"
-                                            qpref = "no"
-                                            comment = "high accuracy"
-                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                     qsaid,
-                                                                     qpref,
-                                                                     comment, AN,
-                                                                     date, source, regions, subjects, misc,
-                                                                     industries, focfirm, by, comp, ment, stence]
+                                            h.qtype = "multi-sentence quote"
+                                            h.qsaid = "no"
+                                            h.qpref = "no"
+                                            h.comment = "high accuracy"
+                                            h.todf()
                                             dx += 1
 
                                         elif len(z) == 0:
-                                            quote = q1
-                                            last = sppl[-1][0]
-                                            person = sppl[-1][1]
-                                            firm = sppl[-1][2]
-                                            role = sppl[-1][3]
-                                            qtype = "multi-sentence quote"
-                                            qsaid = "no"
-                                            qpref = "no"
-                                            comment = "high accuracy"
-                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                     qsaid,
-                                                                     qpref, comment, AN,
-                                                                     date, source, regions, subjects, misc,
-                                                                     industries, focfirm, by, comp, ment, stence]
+                                            h.quote = q1
+                                            h.last = sppl[-1][0]
+                                            h.person = sppl[-1][1]
+                                            h.firm = sppl[-1][2]
+                                            h.role = sppl[-1][3]
+                                            h.qtype = "multi-sentence quote"
+                                            h.qsaid = "no"
+                                            h.qpref = "no"
+                                            h.comment = "high accuracy"
+                                            h.todf()
                                             dx += 1
 
                     ##################################
@@ -1942,20 +1904,16 @@ for art in arts:
                             if len(d) == 0:
                                 quote = x1
                                 quote = re.sub(r'^' + stext + r'.+', '', quote)
-                                quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                last = "NA"
-                                person = "NA"
-                                firm = "NA"
-                                role = "NA"
-                                qtype = "single sentence quote"
-                                qsaid = "no"
-                                qpref = "one or more"
-                                comment = "Review, whether quote or something else, not clear"
-                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN,
-                                                         date,
-                                                         source, regions, subjects, misc, industries, focfirm, by,
-                                                         comp, ment, stence]
+                                h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                                h.last = "NA"
+                                h.person = "NA"
+                                h.firm = "NA"
+                                h.role = "NA"
+                                h.qtype = "single sentence quote"
+                                h.qsaid = "no"
+                                h.qpref = "one or more"
+                                h.comment = "Review, whether quote or something else, not clear"
+                                h.todf()
                                 dx += 1
                         # Because said equivalent but no full quote, check if it's a beginning of multi-sentence quote
                         # If so, assume it would have to be from the most recent referenced person
@@ -1981,37 +1939,30 @@ for art in arts:
                                         break
                                 quote = q1
                                 quote = re.sub(r'^' + stext + r'.+', '', quote)
-                                quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                last = sppl[-1][0]
-                                person = sppl[-1][1]
-                                firm = sppl[-1][2]
-                                role = sppl[-1][3]
-                                qtype = "multi-sentence quote"
-                                qsaid = "no"
-                                qpref = "one or more"
-                                comment = "high accuracy - prior person referenced"
-                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                         comment, AN,
-                                                         date, source, regions, subjects, misc, industries, focfirm,
-                                                         by, comp, ment, stence]
+                                h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                                h.last = sppl[-1][0]
+                                h.person = sppl[-1][1]
+                                h.firm = sppl[-1][2]
+                                h.role = sppl[-1][3]
+                                h.qtype = "multi-sentence quote"
+                                h.qsaid = "no"
+                                h.qpref = "one or more"
+                                h.comment = "high accuracy - prior person referenced"
+                                h.todf()
                                 dx += 1
                             # If there's no multi-sentence beginning here and no full quote, then it's just information with reference to 1+ people
                             elif len(q1) == 0:
                                 for per in prows:
-                                    quote = stence
-                                    last = per[0]
-                                    person = per[1]
-                                    firm = per[2]
-                                    role = per[3]
-                                    qtype = "Information"
-                                    qsaid = "no"
-                                    qpref = "one or more"
-                                    comment = "Just information concerning one or more people"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.quote = stence
+                                    h.last = per[0]
+                                    h.person = per[1]
+                                    h.firm = per[2]
+                                    h.role = per[3]
+                                    h.qtype = "Information"
+                                    h.qsaid = "no"
+                                    h.qpref = "one or more"
+                                    h.comment = "Just information concerning one or more people"
+                                    h.todf()
                                     dx += 1
 
             ##################################
@@ -2093,58 +2044,52 @@ for art in arts:
                         # If name and person are close to title, assign
                         if len(ol) > 0:
 
-                            role = ""
+                            h.role = ""
                             for i in m:
                                 j = ''.join(''.join(elems) for elems in i)
-                                role = re.sub(r'' + per + r'', '', j)
-                                role = re.sub(r',', '', role)
+                                h.role = re.sub(r'' + per + r'', '', j)
+                                h.role = re.sub(r',', '', role)
                                 if len(role) > 0:
                                     break
                             if len(corgs) == 1:
-                                firm = corgs[0]
-                                comment = "No full profile of person yet"
+                                h.firm = corgs[0]
+                                h.comment = "No full profile of person yet"
                             elif len(corgs) > 0:
-                                firm = "NA"
-                                comment = "review - no full profile of person yet"
-                            person = per
+                                h.firm = "NA"
+                                h.comment = "review - no full profile of person yet"
+                            h.person = per
                             sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                             if len(sfx) > 0:
-                                last = person.split()[-2]
+                                h.last = person.split()[-2]
                             elif len(sfx) == 0:
-                                last = person.split()[-1]
+                                h.last = person.split()[-1]
 
-                            qtype = "single sentence quote"
-                            qsaid = "yes"
-                            qpref = "yes"
-                            comment = "review - no full profile of person yet"
+                            h.qtype = "single sentence quote"
+                            h.qsaid = "yes"
+                            h.qpref = "yes"
+                            h.comment = "review - no full profile of person yet"
                             quote = s1
-                            quote = re.sub(r'' + per + '', '', quote)
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment, AN, date, source, regions, subjects, misc, industries,
-                                                     focfirm, by, comp, ment, stence]
+                            h.quote = re.sub(r'' + per + '', '', quote)
+                            h.todf()
                             dx += 1
                         # If not title, then we mark the person and the quote
                         elif (ol) == 0:
 
-                            person = per
+                            h.person = per
                             sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                             if len(sfx) > 0:
-                                last = person.split()[-2]
+                                h.last = person.split()[-2]
                             elif len(sfx) == 0:
-                                last = person.split()[-1]
-                            firm = "NA"
-                            role = "NA"
-                            qtype = "single sentence quote"
-                            qsaid = "yes"
-                            qpref = "yes"
-                            comment = "review - no full profile of person yet"
+                                h.last = person.split()[-1]
+                            h.firm = "NA"
+                            h.role = "NA"
+                            h.qtype = "single sentence quote"
+                            h.qsaid = "yes"
+                            h.qpref = "yes"
+                            h.comment = "review - no full profile of person yet"
                             quote = s1
-                            quote = re.sub(r'' + per + '', '', quote)
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment, AN,
-                                                     date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.quote = re.sub(r'' + per + '', '', quote)
+                            h.todf()
                             dx += 1
                     elif len(s1) == 0:
                         # check if a quote begins in this sentence:
@@ -2173,26 +2118,22 @@ for art in arts:
                                     break
 
                             sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                            person = per
+                            h.person = per
                             if len(sfx) > 0:
-                                last = person.split()[-2]
+                                h.last = person.split()[-2]
                             elif len(sfx) == 0:
-                                last = person.split()[-1]
+                                h.last = person.split()[-1]
 
-                            firm = "NA"
-                            role = "NA"
-                            qtype = "multi-sentence quote"
-                            qsaid = "yes"
-                            qpref = "yes"
+                            h.firm = "NA"
+                            h.role = "NA"
+                            h.qtype = "multi-sentence quote"
+                            h.qsaid = "yes"
+                            h.qpref = "yes"
                             quote = q1
                             quote = re.sub(r'^' + stext + r'.+', '', quote)
-                            quote = re.sub(r'' + stext + r'\Z', '', quote)
-                            comment = "review - no full profile of person yet"
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment,
-                                                     AN, date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.quote = re.sub(r'' + stext + r'\Z', '', quote)
+                            h.comment = "review - no full profile of person yet"
+                            h.todf()
                             dx += 1
 
 
@@ -2203,92 +2144,76 @@ for art in arts:
                                 # If so, then assign
                                 s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
                                 if len(s) > 0:
-                                    person = per
+                                    h.person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
-                                        last = person.split()[-2]
+                                        h.last = person.split()[-2]
                                     elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                        h.last = person.split()[-1]
 
-                                    firm = orgs[0]
-                                    role = "NA"
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "one firm"
-                                    comment = "statement by the firm"
-                                    quote = stence
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment, AN, date, source, regions, subjects, misc,
-                                                             industries, focfirm, by, comp, ment, stence]
+                                    h.firm = orgs[0]
+                                    h.role = "NA"
+                                    h.qtype = "paraphrase"
+                                    h.qsaid = "yes"
+                                    h.qpref = "one firm"
+                                    h.comment = "statement by the firm"
+                                    h.quote = stence
+                                    h.todf()
                                     dx += 1
                                 elif len(s) == 0:
-                                    person = per
+                                    h.person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
-                                        last = person.split()[-2]
+                                        h.last = person.split()[-2]
                                     elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                        h.last = person.split()[-1]
 
-                                    firm = orgs[0]
-                                    role = "NA"
-                                    qtype = "information"
-                                    qsaid = "no"
-                                    qpref = "one firm"
-                                    comment = "information about individual"
-                                    quote = stence
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN,
-                                                             date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.firm = orgs[0]
+                                    h.role = "NA"
+                                    h.qtype = "information"
+                                    h.qsaid = "no"
+                                    h.qpref = "one firm"
+                                    h.comment = "information about individual"
+                                    h.quote = stence
+                                    h.todf()
                                     dx += 1
                             # if 2+ orgs, check for said
                             elif len(orgs) > 1:
                                 s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
                                 if len(s) > 0:
-                                    person = per
+                                    h.person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
-                                        last = person.split()[-2]
+                                        h.last = person.split()[-2]
                                     elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                        h.last = person.split()[-1]
 
-                                    firm = ''.join(''.join(elems) for elems in orgs)
-                                    role = "NA"
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "multiple firms"
-                                    comment = "review - statement by one of multiple firms"
-                                    quote = stence
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment, AN,
-                                                             date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.firm = ''.join(''.join(elems) for elems in orgs)
+                                    h.role = "NA"
+                                    h.qtype = "paraphrase"
+                                    h.qsaid = "yes"
+                                    h.qpref = "multiple firms"
+                                    h.comment = "review - statement by one of multiple firms"
+                                    h.quote = stence
+                                    h.todf()
                                     dx += 1
 
                                 elif len(s) == 0:
-                                    person = per
+                                    h.person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
-                                        last = person.split()[-2]
+                                        h.last = person.split()[-2]
                                     elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                        h.last = person.split()[-1]
 
-                                    firm = ''.join(''.join(elems) for elems in orgs)
-                                    role = "NA"
-                                    qtype = "information"
-                                    qsaid = "yes"
-                                    qpref = "multiple firms"
-                                    comment = "one person and multiple firms"
-                                    quote = stence
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment, AN,
-                                                             date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.firm = ''.join(''.join(elems) for elems in orgs)
+                                    h.role = "NA"
+                                    h.qtype = "information"
+                                    h.qsaid = "yes"
+                                    h.qpref = "multiple firms"
+                                    h.comment = "one person and multiple firms"
+                                    h.quote = stence
+                                    h.todf()
                                     dx += 1
 
 
@@ -2296,108 +2221,88 @@ for art in arts:
                                 s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
                                 if len(s) > 0:
                                     # If no quote single or multiple, no org, and no people list, then information
-                                    person = per
+                                    h.person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
-                                        last = person.split()[-2]
+                                        h.last = person.split()[-2]
                                     elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                        h.last = person.split()[-1]
 
-                                    firm = "NA"
-                                    role = "NA"
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "yes"
-                                    quote = stence
-                                    comment = "From one person"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment, AN,
-                                                             date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.firm = "NA"
+                                    h.role = "NA"
+                                    h.qtype = "paraphrase"
+                                    h.qsaid = "yes"
+                                    h.qpref = "yes"
+                                    h.quote = stence
+                                    h.comment = "From one person"
+                                    h.todf()
                                     dx += 1
                                 if len(s) == 0:
                                     # If no quote single or multiple, no org, and no people list, then information
-                                    person = per
+                                    h.person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
-                                        last = person.split()[-2]
+                                        h.last = person.split()[-2]
                                     elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                        h.last = person.split()[-1]
 
-                                    firm = "NA"
-                                    role = "NA"
-                                    qtype = "information"
-                                    qsaid = "yes"
-                                    qpref = "yes"
-                                    quote = stence
-                                    comment = "Information about one person"
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment, AN,
-                                                             date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.firm = "NA"
+                                    h.role = "NA"
+                                    h.qtype = "information"
+                                    h.qsaid = "yes"
+                                    h.qpref = "yes"
+                                    h.quote = stence
+                                    h.comment = "Information about one person"
+                                    h.todf()
                                     dx += 1
 
                 elif len(ppl) > 1:
                     # Very rare. If more than one person (without titles/orgs), include any organizations in the sentence
                     # flag for review
                     for per in ppl:
-                        quote = stence
-                        person = per
+                        h.quote = stence
+                        h.person = per
                         sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                         if len(sfx) > 0:
-                            last = person.split()[-2]
+                            h.last = person.split()[-2]
                         elif len(sfx) == 0:
-                            last = person.split()[-1]
+                            h.last = person.split()[-1]
 
-                        firm = ''.join(''.join(elems) for elems in orgs)
-                        role = "NA"
-                        qtype = "Information"
-                        qsaid = "no"
-                        qpref = "more than one"
-                        comment = "review - no full profile of person yet"
-                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref, comment,
-                                                 AN,
-                                                 date,
-                                                 source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                 ment, stence]
+                        h.firm = ''.join(''.join(elems) for elems in orgs)
+                        h.role = "NA"
+                        h.qtype = "Information"
+                        h.qsaid = "no"
+                        h.qpref = "more than one"
+                        h.comment = "review - no full profile of person yet"
+                        h.todf()
                         dx += 1
                 elif len(ppl) == 0:
 
                     if len(orgs) == 1:
                         s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
                         if len(s) > 0:
-                            last = "NA"
-                            person = "NA"
-                            firm = orgs[0]
-                            role = "NA"
-                            qtype = "paraphrase"
-                            qsaid = "yes"
-                            qpref = "one - firm"
-                            comment = "statement by the firm"
-                            quote = stence
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment,
-                                                     AN, date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.last = "NA"
+                            h.person = "NA"
+                            h.firm = orgs[0]
+                            h.role = "NA"
+                            h.qtype = "paraphrase"
+                            h.qsaid = "yes"
+                            h.qpref = "one - firm"
+                            h.comment = "statement by the firm"
+                            h.quote = stence
+                            h.todf()
                             dx += 1
                         elif len(s) == 1:
-                            last = "NA"
-                            person = "NA"
-                            firm = orgs[0]
-                            role = "NA"
-                            qtype = "information"
-                            qsaid = "yes"
-                            qpref = "one - firm"
-                            comment = "info about a firm"
-                            quote = stence
-                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid, qpref,
-                                                     comment,
-                                                     AN, date,
-                                                     source, regions, subjects, misc, industries, focfirm, by, comp,
-                                                     ment, stence]
+                            h.last = "NA"
+                            h.person = "NA"
+                            h.firm = orgs[0]
+                            h.role = "NA"
+                            h.qtype = "information"
+                            h.qsaid = "yes"
+                            h.qpref = "one - firm"
+                            h.comment = "info about a firm"
+                            h.quote = stence
+                            h.todf()
                             dx += 1
 
                     elif len(orgs) > 1:
@@ -2412,20 +2317,16 @@ for art in arts:
                                 m = ''.join(''.join(elems) for elems in m)
                                 m = re.sub(r'(' + org + r')', '', m)
                                 if len(m) > 0:
-                                    last = "NA"
-                                    person = "NA"
-                                    firm = org
-                                    role = m
-                                    qtype = "paraphrase"
-                                    qsaid = "yes"
-                                    qpref = "one or more firms"
-                                    comment = "one or more firm representatives said something"
-                                    quote = stence
-                                    df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                             qpref,
-                                                             comment,
-                                                             AN, date, source, regions, subjects, misc, industries,
-                                                             focfirm, by, comp, ment, stence]
+                                    h.last = "NA"
+                                    h.person = "NA"
+                                    h.firm = org
+                                    h.role = m
+                                    h.qtype = "paraphrase"
+                                    h.qsaid = "yes"
+                                    h.qpref = "one or more firms"
+                                    h.comment = "one or more firm representatives said something"
+                                    h.quote = stence
+                                    h.todf()
                                     dx += 1
 
 
@@ -2454,19 +2355,16 @@ for art in arts:
                                     l = n - int(m)
                                     # If person in the previous sentence, use that one
                                     if l == 1:
-                                        quote = s
-                                        last = sppl[-1][0]
-                                        person = sppl[-1][1]
-                                        firm = sppl[-1][2]
-                                        role = sppl[-1][3]
-                                        qtype = "single sentence quote"
-                                        qsaid = "yes"
-                                        qpref = "no"
-                                        comment = "pronoun - from previous sentence"
-                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                 qpref, comment, AN, date, source, regions,
-                                                                 subjects, misc, industries, focfirm, by, comp,
-                                                                 ment, stence]
+                                        h.quote = s
+                                        h.last = sppl[-1][0]
+                                        h.person = sppl[-1][1]
+                                        h.firm = sppl[-1][2]
+                                        h.role = sppl[-1][3]
+                                        h.qtype = "single sentence quote"
+                                        h.qsaid = "yes"
+                                        h.qpref = "no"
+                                        h.comment = "pronoun - from previous sentence"
+                                        h.todf()
                                         dx += 1
                                     # if no person in previous sentence, then check if quote in previous sentence
                                     # You should attribute this quote to the person attributed to the previous sentence.
@@ -2476,20 +2374,16 @@ for art in arts:
                                             s = df.loc[len(df.index) - 1].at['sent']
                                             t = n - int(s)
                                             if t == 1:
-                                                quote = s
-                                                last = df.loc[len(df.index) - 1].at['last']
-                                                person = df.loc[len(df.index) - 1].at['person']
-                                                firm = df.loc[len(df.index) - 1].at['firm']
-                                                role = df.loc[len(df.index) - 1].at['role']
-                                                qtype = "single sentence quote"
-                                                qsaid = "yes"
-                                                qpref = "no"
-                                                comment = "pronoun - reference partial profile"
-                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                         qsaid,
-                                                                         qpref, comment, AN, date, source, regions,
-                                                                         subjects, misc, industries, focfirm, by,
-                                                                         comp, ment, stence]
+                                                h.quote = s
+                                                h.last = df.loc[len(df.index) - 1].at['last']
+                                                h.person = df.loc[len(df.index) - 1].at['person']
+                                                h.firm = df.loc[len(df.index) - 1].at['firm']
+                                                h.role = df.loc[len(df.index) - 1].at['role']
+                                                h.qtype = "single sentence quote"
+                                                h.qsaid = "yes"
+                                                h.qpref = "no"
+                                                h.comment = "pronoun - reference partial profile"
+                                                h.todf()
                                                 dx += 1
 
                         # if no quote, see if beginning of multi-sentence quote:
@@ -2545,31 +2439,22 @@ for art in arts:
                                         s = df.loc[len(df.index) - 1].at['sent']
                                         t = n - int(s)
                                         if t == 1:
-                                            quote = q1
-                                            last = df.loc[len(df.index) - 1].at['last']
-                                            person = df.loc[len(df.index) - 1].at['person']
-                                            firm = df.loc[len(df.index) - 1].at['firm']
-                                            role = ""
+                                            h.quote = q1
+                                            h.last = df.loc[len(df.index) - 1].at['last']
+                                            h.person = df.loc[len(df.index) - 1].at['person']
+                                            h.firm = df.loc[len(df.index) - 1].at['firm']
+                                            h.role = ""
                                             for i in m:
                                                 j = ''.join(''.join(elems) for elems in i)
-                                                role = re.sub(r',', '', j)
+                                                h.role = re.sub(r',', '', j)
                                                 if len(role) > 0:
                                                     break
-                                            qtype = "multi-sentence quote"
-                                            qsaid = "maybe"
-                                            qpref = "no"
-                                            comment = "Title of previous partial profile person"
-                                            df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                     qsaid,
-                                                                     qpref, comment, AN, date, source, regions,
-                                                                     subjects, misc, industries, focfirm, by, comp,
-                                                                     ment, stence]
+                                            h.qtype = "multi-sentence quote"
+                                            h.qsaid = "maybe"
+                                            h.qpref = "no"
+                                            h.comment = "Title of previous partial profile person"
+                                            h.todf()
                                             dx += 1
-
-
-
-
-
 
 
 
@@ -2585,28 +2470,18 @@ for art in arts:
                                             yu = re.findall(r'' + stext + r'', q2a, re.IGNORECASE)
                                             ppl = dfsent["ppl"][nm]
                                             if len(ppl)>0 & len(yu)>0:
-                                                quote = q1
-                                                last = dfsent.loc[nm].at['people'][0]
-                                                person = dfsent.loc[nm].at['people'][1]
-                                                role = dfsent.loc[nm].at['people'][2]
-                                                firm = dfsent.loc[nm].at['people'][3]
+                                                h.quote = q1
+                                                h.last = dfsent.loc[nm].at['people'][0]
+                                                h.person = dfsent.loc[nm].at['people'][1]
+                                                h.role = dfsent.loc[nm].at['people'][2]
+                                                h.firm = dfsent.loc[nm].at['people'][3]
 
-                                                qtype = "multi-sentence quote"
-                                                qsaid = "maybe"
-                                                qpref = "no"
-                                                comment = "Title of previous partial profile person"
-                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                         qsaid,
-                                                                         qpref, comment, AN, date, source, regions,
-                                                                         subjects, misc, industries, focfirm, by, comp,
-                                                                         ment, stence]
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "maybe"
+                                                h.qpref = "no"
+                                                h.comment = "Title of previous partial profile person"
+                                                h.todf()
                                                 dx += 1
-
-
-
-
-
-
 
 
 
@@ -2626,20 +2501,16 @@ for art in arts:
                                             s = df.loc[len(df.index) - 1].at['sent']
                                             t = n - int(s)
                                             if t == 1:
-                                                quote = q1
-                                                last = df.loc[len(df.index) - 1].at['last']
-                                                person = df.loc[len(df.index) - 1].at['person']
-                                                firm = df.loc[len(df.index) - 1].at['firm']
-                                                role = df.loc[len(df.index) - 1].at['role']
-                                                qtype = "multi-sentence quote"
-                                                qsaid = "maybe"
-                                                qpref = "no"
-                                                comment = "pronoun of previous partial person"
-                                                df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype,
-                                                                         qsaid,
-                                                                         qpref, comment, AN, date, source, regions,
-                                                                         subjects, misc, industries, focfirm, by,
-                                                                         comp, ment, stence]
+                                                h.quote = q1
+                                                h.last = df.loc[len(df.index) - 1].at['last']
+                                                h.person = df.loc[len(df.index) - 1].at['person']
+                                                h.firm = df.loc[len(df.index) - 1].at['firm']
+                                                h.role = df.loc[len(df.index) - 1].at['role']
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "maybe"
+                                                h.qpref = "no"
+                                                h.comment = "pronoun of previous partial person"
+                                                h.todf()
                                                 dx += 1
                             # If no quote single/multiple, see if any information
                             if len(q1) == 0:
@@ -2647,20 +2518,16 @@ for art in arts:
                                     y = df.loc[len(df.index) - 1].at['last']
                                     x = re.findall(r'(' + y + r')', stz4, re.IGNORECASE)
                                     if len(x) > 0:
-                                        last = df.loc[len(df.index) - 1].at['last']
-                                        person = df.loc[len(df.index) - 1].at['person']
-                                        firm = df.loc[len(df.index) - 1].at['firm']
-                                        role = df.loc[len(df.index) - 1].at['role']
-                                        qtype = "information"
-                                        qsaid = "no"
-                                        qpref = "yes"
-                                        comment = "review potentially info about an individual"
-                                        quote = stence
-                                        df.loc[len(df.index)] = [n, person, last, role, firm, quote, qtype, qsaid,
-                                                                 qpref,
-                                                                 comment, AN, date,
-                                                                 source, regions, subjects, misc, industries,
-                                                                 focfirm, by, comp, ment, stence]
+                                        h.last = df.loc[len(df.index) - 1].at['last']
+                                        h.person = df.loc[len(df.index) - 1].at['person']
+                                        h.firm = df.loc[len(df.index) - 1].at['firm']
+                                        h.role = df.loc[len(df.index) - 1].at['role']
+                                        h.qtype = "information"
+                                        h.qsaid = "no"
+                                        h.qpref = "yes"
+                                        h.comment = "review potentially info about an individual"
+                                        h.quote = stence
+                                        h.todf()
                                         dx += 1
 
             n += 1
@@ -2674,7 +2541,7 @@ for art in arts:
 
     t2 = time.time()
     total = t1 - t0
-    print(art + 1, AN, "time run:", round(t2 - t1, 2), "total hours:", round((t2 - t0) / (60 * 60), 2),
+    print(art + 1, h.AN, "time run:", round(t2 - t1, 2), "total hours:", round((t2 - t0) / (60 * 60), 2),
           "mean rate:", round((t2 - t0) / (art + 1), 2))
 
 # output the chunk
@@ -2689,5 +2556,7 @@ df
 
 # TO DO:
 # Former leaders
+# Double counting
+#
 # For interviews if 5 sub settings look for Inc, etc. in last one to get the right firm name.
 # Test 25 random ones.
