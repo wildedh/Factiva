@@ -207,7 +207,7 @@ for art in arts:
     mxpron = 2
     mxorg1 = 2
 
-    n = 1
+    n = h.n = 1
     #Set the sentence count to 0
     s = 0
     #Create a count variable for each article that starts at 0 and +1 every time you add to the DF
@@ -332,7 +332,7 @@ for art in arts:
                             h.todf()
                             dx += 1
                 n += 1
-
+                h.n += 1
 
     #####################
     # Non-transcripts (vast majority of instances)
@@ -568,32 +568,26 @@ for art in arts:
 
                         # If there is just one organization mentioned, assign
                         if len(orgs) == 1:
-                            print (n, orgs)
+
                             org = orgs[0]
-                            org = org.replace(r"'s", "")
-                            org1 = re.findall(r'(' + per + r').+(' + org + r')', stz4, re.IGNORECASE)
-                            org2 = re.findall(r'(' + org + r').+(' + per + r')', stz4, re.IGNORECASE)
-                            f = org1 + org2
-                            f = ''.join(''.join(elems) for elems in f)
-
+                            firm = org.replace(r"'s", "")
                             # If yes, add as potential person
-                            if len(f) > 0:
-                                person = per
-                                sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                if len(sfx) > 0:
-                                    last = person.split()[-2]
-                                elif len(sfx) == 0:
-                                    last = person.split()[-1]
 
-                                role = ""
-                                for i in pos:
-                                    j = ''.join(''.join(elems) for elems in i)
-                                    role = re.sub(r'' + per + r'', '', j)
-                                    role = re.sub(r',', '', role)
-                                    if len(role) > 0:
-                                        break
-                                f = re.sub(r'(' + per + r')', '', f)
-                                firm = f
+                            person = per
+                            sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
+                            if len(sfx) > 0:
+                                last = person.split()[-2]
+                            elif len(sfx) == 0:
+                                last = person.split()[-1]
+
+                            role = ""
+                            for i in pos:
+                                j = ''.join(''.join(elems) for elems in i)
+                                role = re.sub(r'' + per + r'', '', j)
+                                role = re.sub(r',', '', role)
+                                if len(role) > 0:
+                                    break
+
                         # Multiple orgs in sentence
                         elif len(orgs) > 1:
 
@@ -1169,7 +1163,6 @@ for art in arts:
             dfsent.loc[len(dfsent.index)] = [n, stence, stz4, ment, orgs, corgs, ppl, prows, people]
             s += 1
             n += 1
-
 
 
         ############################################################################################
@@ -1950,7 +1943,8 @@ for art in arts:
                                 h.comment = "high accuracy - prior person referenced"
                                 h.todf()
                                 dx += 1
-                            # If there's no multi-sentence beginning here and no full quote, then it's just information with reference to 1+ people
+                            # If there's no multi-sentence beginning here and no full quote,
+                            # then it's just information with reference to 1+ people
                             elif len(q1) == 0:
                                 for per in prows:
                                     h.quote = stence
@@ -2531,6 +2525,7 @@ for art in arts:
                                         dx += 1
 
             n += 1
+            h.n +=1
 
 
 
@@ -2557,6 +2552,6 @@ df
 # TO DO:
 # Former leaders
 # Double counting
-#
+# Get rid of seldum "Information" type entries. or make them ubiquitious
 # For interviews if 5 sub settings look for Inc, etc. in last one to get the right firm name.
 # Test 25 random ones.
