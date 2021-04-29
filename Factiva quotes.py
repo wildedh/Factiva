@@ -360,7 +360,7 @@ z = 0
 
 #arts = range(18,26)
 
-arts = [195]
+arts = [219]
 for art in arts:
 #for art in dfa.index:
     #try:
@@ -433,7 +433,7 @@ for art in arts:
         # Separate any words with multiple upper-case then lower case patterns (e.g., "MatrixOne" -> "Matrix One")
         text = re.sub(r"(\b[A-Z][a-z]+)([A-Z][a-z]+)", r"\1 \2", text)
 
-# Next remove any quotes around a single word (e.g., "great"). These also irratate the nlp program
+        # Next remove any quotes around a single word (e.g., "great"). These also irratate the nlp program
         zy = []
         t = re.findall(r'(' + start + r')(\w+\w)(' + end + r')', text)
         for w in t:
@@ -455,6 +455,8 @@ for art in arts:
             zy.append(z)
         for w in zy:
             text = re.sub(r'(' + w[0] + r')', w[1], text)
+
+
         ################################
         # Loading the text into the Stanza nlp system
         ################################
@@ -489,6 +491,7 @@ for art in arts:
         f = re.findall(r'(((\b[A-Z]+\b\W*){4,}):)', text)
         # If there is at least 1 of these very unique instances, this is got to be a transcript of some kind.
         if len(f) > 0:
+
             # Go through each sentence to find if it's introducing a person and their role and firm
             for sent in doc.sentences:
 
@@ -532,7 +535,7 @@ for art in arts:
                             role = ''.join(''.join(elems) for elems in r)
                         elif len(p) == 3:
                             role = p[1]
-                        row = [last, person, firm, role, n]
+                        row = [last, person, role, firm, n]
 
                         # If something in each key varable then add to the dataset of people
                         if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
@@ -553,8 +556,8 @@ for art in arts:
                         # check if person in people list talking
                         for per in people:
                             last = per[0]
-                            h = re.findall(r'' + last + r':', stence, re.IGNORECASE)
-                            m = m + h
+                            last_string = re.findall(r'' + last + r':', stence, re.IGNORECASE)
+                            m = m + last_string
                         m = ''.join(''.join(elems) for elems in m)
                         if len(m) > 0:
                             for per in people:
@@ -1194,8 +1197,6 @@ for art in arts:
                     most_recent_person = prows[0]
 
 
-
-
                 ##################################
                 # SENTENCES WITH A "SAID" EQUIVALENT
                 ##################################
@@ -1228,7 +1229,6 @@ for art in arts:
                             k = ''.join(''.join(elems) for elems in k)
                             k = re.sub(r'(' + qs + r')', '', k)
                             if len(k) > 0:
-
                                 h.quote = x1
                                 h.last = most_recent_person[0]
                                 h.person = most_recent_person[1]
