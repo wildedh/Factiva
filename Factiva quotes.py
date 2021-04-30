@@ -48,15 +48,17 @@ l2 = r'executive\s+vice\s+president|executive\s+vice-president|sr\.\s+vice\s+pre
 
 l3 = r'vice\s+chair\S+|vice\s+president|vice-president|senior\s+manager|sr.*manager|senior\s+director|' \
      r'chief\s+executive|senior\s+manager|sr.*manager|vp\s+of\s+\S+|global\+director|senior\s+director|' \
-     r'sr.*director|managing\s+director|vice\s+minister|prime\s+minister|founding\s+partner'
+     r'sr.*director|managing\s+director|vice\s+minister|prime\s+minister|founding\s+partner|board\s+member' \
+     r'business\s+owner|sales\s+manager|svp'
 
 l4 = r'president|chair\S+|director|manager|vp|' \
      r'banker\b|specialist\b|accountant\b|journalist\b|reporter\b|analyst\b|consultant\b|negotiator\b|' \
      r'governor\b|congress\S+|house\s+speaker|senator|senior\s+fellow|fellow|undersecretary|' \
      r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|executive\b|\baide\b|\bpilot\b|professor|' \
-     r'attorney|minister|secretary|\bguru\b|partner|general\s+counsel|mayor'
+     r'attorney|minister|secretary|\bguru\b|partner|general\s+counsel|mayor|dealer|board|administrator|owner|' \
+     r'leader'
 
-l5 = r'\bC.O\b|board|administrator'
+l5 = r'\bC.O\b'
 
 pron = r'\bhe\b|\bshe\b'
 plurals = r'analysts|bankers|consultants|executives|management|participants|officials'
@@ -68,6 +70,8 @@ suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
 news = r'Reuters'
 
 maxch = str(200)
+maxch1 = str(60)
+
 
 # Set the max number of words away from the focal leader and the focal organization
 mxld = 6
@@ -75,6 +79,7 @@ mxorg = 6
 mxlds = 2
 mxpron = 2
 mxorg1 = 2
+
 
 # Create a class in which to place variables and then create a function that will place all the variables
 # in a df row. Makes the code a bit more readable when you go through the todf function doezens of times
@@ -177,67 +182,67 @@ def multisent(stence):
 # Function for when you want to search with instance of a role and another variable, when distance between
 # doesn't matter.
 def longrolesearch(sentence,non_role_var):
-    role_find1a = re.findall(r'(' + non_role_var + r').+(' + l1 + r')', sentence, re.IGNORECASE)
-    role_find1b = re.findall(r'(' + non_role_var + r').+(' + l2 + r')', sentence, re.IGNORECASE)
-    role_find1c = re.findall(r'(' + non_role_var + r').+(' + l3 + r')', sentence, re.IGNORECASE)
-    role_find1d = re.findall(r'(' + non_role_var + r').+(' + l4 + r')', sentence, re.IGNORECASE)
-    role_find1e = re.findall(r'(' + non_role_var + r').+(' + l5 + r')', sentence)
-    role_find2a = re.findall(r'(' + l1 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
-    role_find2b = re.findall(r'(' + l2 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
-    role_find2c = re.findall(r'(' + l3 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
-    role_find2d = re.findall(r'(' + l4 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
-    role_find2e = re.findall(r'(' + l5 + r').+(' + non_role_var + r')', sentence)
+    role_list1a = re.findall(r'(' + non_role_var + r').+(' + l1 + r')', sentence, re.IGNORECASE)
+    role_list1b = re.findall(r'(' + non_role_var + r').+(' + l2 + r')', sentence, re.IGNORECASE)
+    role_list1c = re.findall(r'(' + non_role_var + r').+(' + l3 + r')', sentence, re.IGNORECASE)
+    role_list1d = re.findall(r'(' + non_role_var + r').+(' + l4 + r')', sentence, re.IGNORECASE)
+    role_list1e = re.findall(r'(' + non_role_var + r').+(' + l5 + r')', sentence)
+    role_list2a = re.findall(r'(' + l1 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
+    role_list2b = re.findall(r'(' + l2 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
+    role_list2c = re.findall(r'(' + l3 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
+    role_list2d = re.findall(r'(' + l4 + r').+(' + non_role_var + r')', sentence, re.IGNORECASE)
+    role_list2e = re.findall(r'(' + l5 + r').+(' + non_role_var + r')', sentence)
 
-    role_find = role_find1a + role_find1b + role_find1c + role_find1d + role_find1e + role_find2a + \
-                role_find2b + role_find2c + role_find2d + role_find2e
+    role_list = role_list1a + role_list1b + role_list1c + role_list1d + role_list1e + role_list2a + \
+                role_list2b + role_list2c + role_list2d + role_list2e
 
-    return role_find
+    return role_list
 
 # Function for when you want to search with instance of a role and another variable, when distance between
 # them matters.
 def shortrolesearch(sentence, non_role_var, max_char):
-    role_find1a = re.findall(
+    role_list1a = re.findall(
         r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + l1 + r'))',
         sentence,
         re.IGNORECASE)
-    role_find1b = re.findall(
+    role_list1b = re.findall(
         r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + l2 + r'))',
         sentence,
         re.IGNORECASE)
-    role_find1c = re.findall(
+    role_list1c = re.findall(
         r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + l3 + r'))',
         sentence,
         re.IGNORECASE)
-    role_find1d = re.findall(
+    role_list1d = re.findall(
         r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + l4 + r'))',
         sentence,
         re.IGNORECASE)
-    role_find1e = re.findall(
+    role_list1e = re.findall(
         r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + l5 + r'))',
         sentence)
-    role_find2a = re.findall(
+    role_list2a = re.findall(
         r'\b(?:(' + l1 + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + non_role_var + r'))',
         sentence,
         re.IGNORECASE)
-    role_find2b = re.findall(
+    role_list2b = re.findall(
         r'\b(?:(' + l2 + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + non_role_var + r'))',
         sentence,
         re.IGNORECASE)
-    role_find2c = re.findall(
+    role_list2c = re.findall(
         r'\b(?:(' + l3 + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + non_role_var + r'))',
         sentence,
         re.IGNORECASE)
-    role_find2d = re.findall(
+    role_list2d = re.findall(
         r'\b(?:(' + l4 + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + non_role_var + r'))',
         sentence,
         re.IGNORECASE)
-    role_find2e = re.findall(
+    role_list2e = re.findall(
         r'\b(?:(' + l5 + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(' + non_role_var + r'))',
         sentence)
 
-    role_find = role_find1a + role_find1b + role_find1c + role_find1d + role_find1e + role_find2a + \
-                role_find2b + role_find2c + role_find2d + role_find2e
-    return role_find
+    role_list = role_list1a + role_list1b + role_list1c + role_list1d + role_list1e + role_list2a + \
+                role_list2b + role_list2c + role_list2d + role_list2e
+    return role_list
 
 
 
@@ -307,6 +312,17 @@ def threerolesearch(sentence, non_role_var1, non_role_var2):
     org_find = c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9 + c10
     return org_find
 
+def rolesearch(sentence):
+    p1a = re.findall(r'(' + l1 + r')', sentence, re.IGNORECASE)
+    p1b = re.findall(r'(' + l2 + r')', sentence, re.IGNORECASE)
+    p1c = re.findall(r'(' + l3 + r')', sentence, re.IGNORECASE)
+    p1d = re.findall(r'(' + l4 + r')', sentence, re.IGNORECASE)
+    p1e = re.findall(r'(' + l5 + r')', sentence)
+    role_list = p1a + p1b + p1c + p1d + p1e
+
+    return role_list
+
+
 
 def info_extraction(stence, orgs):
     # Add "Information" regarding any company or person to the main database.
@@ -354,13 +370,37 @@ def info_extraction(stence, orgs):
             h.quote = stence
             h.todf_info()
 
+def role_set(role_list, var_to_strip):
+    role = ""
+    for i in role_list:
+        j = ''.join(''.join(elems) for elems in i)
+        role = re.sub(r'' + var_to_strip + r'', '', j)
+        role = re.sub(r',', '', role)
+        if len(role) > 0:
+            role = re.sub(r'\s+of\s*\Z', '', role)
+            break
+    return role
 
+
+
+def person_set(most_recent_person,next_person):
+    if len(most_recent_person)>0:
+        last = most_recent_person[0]
+        person = most_recent_person[1]
+        role = most_recent_person[2]
+        firm = most_recent_person[3]
+    else:
+        last = next_person[0]
+        person = next_person[1]
+        role = next_person[2]
+        firm = next_person[3]
+    return last, person, role, firm
 
 z = 0
 
-#arts = range(18,26)
+#arts = range(221,228)
 
-arts = [219]
+arts = [230]
 for art in arts:
 #for art in dfa.index:
     #try:
@@ -395,7 +435,7 @@ for art in arts:
         d2b = re.findall(r'^.{0,' + maxch + r'}/\b.+\b/\s*-', text, re.IGNORECASE)
         d3a = re.findall(r'^.{0,' + maxch + r'}\d\d*\s*--', text, re.IGNORECASE)
         d3b = re.findall(r'^.{0,' + maxch + r'}\d\d*\s-', text, re.IGNORECASE)
-
+        d3c = re.findall(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', text, re.IGNORECASE)
 
         # Iteratively go through these instances. Only do one because could potentially
         # over cut if run on more than one.
@@ -420,6 +460,9 @@ for art in arts:
 
         elif len(d3b) > 0:
             text = re.sub(r'^.{0,' + maxch + r'}\d\d*\s-', '', text)
+
+        elif len(d3c) > 0:
+            text = re.sub(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', '', text)
 
 
 
@@ -462,6 +505,7 @@ for art in arts:
         ################################
         doc = nlp(text)
 
+        #try:
         people = []
         sppl = []
 
@@ -489,8 +533,11 @@ for art in arts:
         # Look through document and see if has instances of at least four all-cap words
         # broken up by non-word characters (e.g., spaces, commas) followed by a colon.
         f = re.findall(r'(((\b[A-Z]+\b\W*){4,}):)', text)
-        # If there is at least 1 of these very unique instances, this is got to be a transcript of some kind.
-        if len(f) > 0:
+        comma_string = 0
+        if len(f)> 0:
+            comma_string = re.findall(r',', f[0][0])
+        # If there is at least 1 of these very unique instances (with commas), this is got to be a transcript of some kind.
+        if len(f) > 0 and len(comma_string) > 0:
 
             # Go through each sentence to find if it's introducing a person and their role and firm
             for sent in doc.sentences:
@@ -510,15 +557,17 @@ for art in arts:
 
                     last = ""
                     role = ""
+                    role1 = ""
                     person = ""
                     firm = ""
+                    firm1 = ""
                     # Check if name title in the sentence:
                     g = re.findall(r'(((\b[A-Z]+\b\W*){4,}):)', stence)
                     if len(g) > 0:
                         a = g[0][0]
                         a = re.sub(r':', '', a)
                         # If company name is Inc and has a comma, remove the comma
-                        a = re.sub(',\s+(INC|Inc)', ' Inc', a, re.IGNORECASE)
+                        a = re.sub(',\s+(INC|LLC)', '', a, re.IGNORECASE)
                         p = a.split(',')
 
                         person = p[0]
@@ -528,13 +577,24 @@ for art in arts:
                             last = person.split()[-2]
                         elif len(sfx) == 0:
                             last = person.split()[-1]
-                        firm = p[-1]
+                        firm1 = p[-1]
                         # Lastly, if there are four pieces the role is the 2nd and 3rd pieces so combine
-                        if len(p) == 4:
+                        if len(p) ==5:
+                            r = p[1] + p[2] + p[3]
+                            role1 = ''.join(''.join(elems) for elems in r)
+                        elif len(p) == 4:
                             r = p[1] + p[2]
-                            role = ''.join(''.join(elems) for elems in r)
+                            role1 = ''.join(''.join(elems) for elems in r)
                         elif len(p) == 3:
-                            role = p[1]
+                            role1 = p[1]
+                        role_check = rolesearch(role1)
+                        if len(role_check)==0:
+                            role = firm1
+                            firm = role1
+                        elif len(role_check)>0:
+                            role = role1
+                            firm = firm1
+
                         row = [last, person, role, firm, n]
 
                         # If something in each key varable then add to the dataset of people
@@ -548,8 +608,6 @@ for art in arts:
                                 people = [list(x) for x in set(tuple(x) for x in people)]
                                 sppl.append(row)
                                 lsts.append(last)
-
-
 
                     elif len(g) == 0:
                         m = []
@@ -568,8 +626,8 @@ for art in arts:
                                     h.quote = re.sub(r'^.*' + last + r':', '', stence)
                                     h.last = per[0]
                                     h.person = per[1]
-                                    h.firm = per[2]
-                                    h.role = per[3]
+                                    h.role = per[2]
+                                    h.firm = per[3]
                                     h.qtype = "Transcript"
                                     h.qsaid = "yes"
                                     h.qpref = "yes"
@@ -604,7 +662,7 @@ for art in arts:
         #####################
         # Non-transcripts (vast majority of instances)
         #####################
-        elif len(f) == 0:
+        else:
             n =  1
             h.n = 1
             ########################################################
@@ -657,8 +715,6 @@ for art in arts:
                 # Last, remove information at the end of multi-sentence quotes
                 # the end quote would have a space after the quote
                 filtered_sent = re.sub(r'^.+(' + end + r')\s+', ' ', filtered_sent)
-
-
 
 
                 # Check if you can add to dataset of people/firm/role
@@ -733,28 +789,26 @@ for art in arts:
                         if len(ppl) == 1:
                             # If exactly 1 org, not matter where the person is in proximity of title/role
                             if len(orgs) == 1:
-                                role_find = longrolesearch(filtered_sent, per)
+                                role_list = longrolesearch(filtered_sent, per)
 
                             # If either 0 or >1 orgs, check if person and title are close
                             else:
-                                role_find = shortrolesearch(filtered_sent, per, mxld)
+                                role_list = shortrolesearch(filtered_sent, per, mxld)
 
                         # Then by definition, must be >1 people
                         else:
-                            role_find = shortrolesearch(filtered_sent, per, mxlds)
-
+                            role_list = shortrolesearch(filtered_sent, per, mxlds)
 
                         # If the title is mentioned, move to next step
-                        if len(role_find) > 0:
-
+                        if len(role_list) > 0:
 
                             # If there is just one organization mentioned, assign
                             if len(orgs) == 1:
 
                                 org = orgs[0]
                                 firm = org.replace(r"'s", "")
-                                # If yes, add as potential person
 
+                                # If yes, add as potential person
                                 person = per
                                 sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                 if len(sfx) > 0:
@@ -762,13 +816,7 @@ for art in arts:
                                 elif len(sfx) == 0:
                                     last = person.split()[-1]
 
-                                role = ""
-                                for i in role_find:
-                                    j = ''.join(''.join(elems) for elems in i)
-                                    role = re.sub(r'' + per + r'', '', j)
-                                    role = re.sub(r',', '', role)
-                                    if len(role) > 0:
-                                        break
+                                role = role_set(role_list, per)
 
                             # Multiple orgs in sentence
                             elif len(orgs) > 1:
@@ -824,6 +872,7 @@ for art in arts:
                                         repeat_orgs.append(b)
 
                                 for o in orgs:
+
                                     #rerun this same process because now have the total b list.
                                     or2 = orgs.copy()
                                     or2.remove(o)
@@ -831,6 +880,7 @@ for art in arts:
 
                                     if len (b)>0:
                                         repeat_count +=1
+
 
                                     if c > 0 and len(b) > 0:
                                         break
@@ -856,7 +906,7 @@ for art in arts:
                                         # Essentially, at this point you'll only update a strong match
                                         # with a better version of the org for which you had a strong match.
 
-                                        if q>0 and l==0:
+                                        if q > 0 and l == 0:
                                             continue
 
 
@@ -866,8 +916,8 @@ for art in arts:
 
                                         og = o1 + o2
 
-
                                         if len(og) > 0:
+
                                             os = shortrolesearch(filtered_sent, o, mxorg1)
                                             om = ''.join(''.join(elems) for elems in os)
 
@@ -878,13 +928,9 @@ for art in arts:
                                                     last = person.split()[-2]
                                                 elif len(sfx) == 0:
                                                     last = person.split()[-1]
-                                                role = ""
-                                                for i in os:
-                                                    j = ''.join(''.join(elems) for elems in i)
-                                                    role = re.sub(r'' + o + r'', '', j)
-                                                    role = re.sub(r',', '', role)
-                                                    if len(role) > 0:
-                                                        break
+
+                                                role = role_set(os, o)
+
                                                 o = o.replace(r"'s", "")
                                                 firm = o
 
@@ -908,14 +954,8 @@ for art in arts:
                                                 elif len(sfx) == 0:
                                                     last = person.split()[-1]
 
-                                                role = ""
-                                                for i in m:
-                                                    # If match, there are three items, the third item (index 2) is the role
-                                                    j = i[2]
-                                                    role = re.sub(r'' + o + r'', '', j)
-                                                    role = re.sub(r',', '', role)
-                                                    if len(role) > 0:
-                                                        break
+                                                role = role_set(m, o)
+
                                                 firm = o
                                                 c += 1
                                                 q += 1
@@ -950,6 +990,7 @@ for art in arts:
                                                 # If not any of these three strong matches ('s, of, whose),
                                                 # check on a weaker match: if name are close to title
                                                 elif len(j) == 0:
+
                                                     m = shortrolesearch(filtered_sent, o, mxorg1)
                                                     on = ''.join(''.join(elems) for elems in m)
 
@@ -957,6 +998,8 @@ for art in arts:
                                                     if len(on) > 0:
                                                         m = shortrolesearch(filtered_sent, per, mxorg1)
                                                         ol = ''.join(''.join(elems) for elems in m)
+
+
                                                         # If name and person are close to title, assign
                                                         if len(ol) > 0:
                                                             person = per
@@ -966,13 +1009,8 @@ for art in arts:
                                                             elif len(sfx) == 0:
                                                                 last = person.split()[-1]
 
-                                                            role = ""
-                                                            for i in m:
-                                                                j = ''.join(''.join(elems) for elems in i)
-                                                                role = re.sub(r'' + per + r'', '', j)
-                                                                role = re.sub(r',', '', role)
-                                                                if len(role) > 0:
-                                                                    break
+                                                            role = role_set(m, per)
+
                                                             firm = o
                                                             c += 1
                                                             if len(gm) == 0:
@@ -1011,18 +1049,11 @@ for art in arts:
                                         last = person.split()[-2]
                                     elif len(sfx) == 0:
                                         last = person.split()[-1]
-
-                                    role = ""
-                                    for i in role_find:
-                                        j = ''.join(''.join(elems) for elems in i)
-                                        role = re.sub(r'' + per + r'', '', j)
-                                        role = re.sub(r',', '', role)
-                                        if len(role) > 0:
-                                            break
+                                    role = role_set(role_list, per)
                                     firm = df.loc[len(df.index) - 1].at['firm']
                         # If there's no leadership position, check if there is a person
                         # If there is and it says "of" something, add it to the people list
-                        elif len(role_find) == 0:
+                        elif len(role_list) == 0:
                             if len(ppl) == 1:
                                 if len(orgs) > 0:
                                     for org in orgs:
@@ -1038,11 +1069,8 @@ for art in arts:
                                             elif len(sfx) == 0:
                                                 last = person.split()[-1]
 
-
                         # Combine last name, person, firm, and role, for that person.
                         row = [last, person, role, firm, n]
-
-
 
                         # If something in each key varable then add to the dataset of people
                         if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
@@ -1102,12 +1130,7 @@ for art in arts:
 
                                 firm = o
                                 # Add the role by iteratively going through the hierarchy of titles
-                                for i in m:
-                                    j = ''.join(''.join(elems) for elems in i)
-                                    role = re.sub(r'' + firm + r'', '', j)
-                                    role = re.sub(r',', '', role)
-                                    if len(role) > 0:
-                                        break
+                                role = role_set(m, firm)
 
                                 # Combine last name, person, firm, and role, for that person.
                                 row = [last, person, role, firm, n]
@@ -1142,6 +1165,7 @@ for art in arts:
                             dfpeople = dfpeople.drop_duplicates(subset=['last', 'full'], keep='first')\
                                 .reset_index(drop=True)
 
+
                 # Cumulative list of people from people list referenced in sentences
                 # Will refer to this in cases of pronouns (e.g., "she said"), etc.
                 for per in people:
@@ -1150,17 +1174,20 @@ for art in arts:
                         per[4] = n
                         sppl.append(per)
 
-
-
-                if len(prows)==0 and len(dfsent.index)>1:
-                    prows = dfsent.loc[len(dfsent.index) - 1].at['prows']
+                # Carry forward the prows column until replaced with next person
+                # In essence, prows tells you the most recent person in each sentence including the focal one.
+                if len(prows)==0 and len(dfsent.index)>0:
+                        prows = dfsent.loc[len(dfsent.index) - 1].at['prows']
 
                 covered = None
+
+
 
                 dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent,sentiment, orgs, corgs, ppl, prows, people, covered]
 
                 n += 1
                 h.n += 1
+
 
 
             ############################################################################################
@@ -1182,6 +1209,8 @@ for art in arts:
                 prows = dfsent["prows"][se]
                 people = dfsent["people"][se]
 
+
+
                 if dfsent["covered"][se] == 1:
                     info_extraction(stence, orgs)
                     n += 1
@@ -1192,9 +1221,22 @@ for art in arts:
                 # Deploy function to extract information from the sentence
                 info_extraction(stence, orgs)
 
+                most_recent_person = ""
+                next_person = ""
                 # Establish the last person referenced (first filter later ones and then take the last one)
                 if len(prows)>0:
                     most_recent_person = prows[0]
+
+
+                #############################
+                elif len(prows)==0:
+                    df_first_person = dfsent[dfsent['prows'].str.len()>0]
+                    next_person = df_first_person["prows"][0]
+                    print (n, df_first_person)
+##############################
+
+
+
 
 
                 ##################################
@@ -1215,8 +1257,6 @@ for art in arts:
                         x1 = ''.join(''.join(elems) for elems in x1)
                         x1 = re.sub(r'(' + qs + r')', '', x1)
 
-
-
                         if len(x1) > 0:
                             # if there is a said equivalent and quote but no person, check if pronoun near said equivalent
                             k1 = re.findall(
@@ -1230,10 +1270,10 @@ for art in arts:
                             k = re.sub(r'(' + qs + r')', '', k)
                             if len(k) > 0:
                                 h.quote = x1
-                                h.last = most_recent_person[0]
-                                h.person = most_recent_person[1]
-                                h.role = most_recent_person[2]
-                                h.firm = most_recent_person[3]
+                                h.last = person_set(most_recent_person,next_person)[0]
+                                h.last = person_set(most_recent_person,next_person)[1]
+                                h.last = person_set(most_recent_person,next_person)[2]
+                                h.last = person_set(most_recent_person,next_person)[3]
                                 h.qtype = "single sentence quote"
                                 h.qsaid = "yes"
                                 h.qpref = "no"
@@ -1323,10 +1363,10 @@ for art in arts:
                                         # If person in the previous sentence, use that one
                                         if l == 1:
                                             h.quote = x1
-                                            h.last = most_recent_person[0]
-                                            h.person = most_recent_person[1]
-                                            h.role = most_recent_person[2]
-                                            h.firm = most_recent_person[3]
+                                            h.last = person_set(most_recent_person,next_person)[0]
+                                            h.last = person_set(most_recent_person,next_person)[1]
+                                            h.last = person_set(most_recent_person,next_person)[2]
+                                            h.last = person_set(most_recent_person,next_person)[3]
 
                                             h.qtype = "single sentence quote"
                                             h.qsaid = "yes"
@@ -1388,10 +1428,10 @@ for art in arts:
                                 k = re.sub(r'(' + qs + r')', '', k)
                                 if len(k) > 0:
                                     h.quote = stence
-                                    h.last = most_recent_person[0]
-                                    h.person = most_recent_person[1]
-                                    h.role = most_recent_person[2]
-                                    h.firm = most_recent_person[3]
+                                    h.last = person_set(most_recent_person,next_person)[0]
+                                    h.last = person_set(most_recent_person,next_person)[1]
+                                    h.last = person_set(most_recent_person,next_person)[2]
+                                    h.last = person_set(most_recent_person,next_person)[3]
 
                                     h.qtype = "paraphrase"
                                     h.qsaid = "yes"
@@ -1410,21 +1450,15 @@ for art in arts:
                                         pass
                                     else:
                                         # If not end quote either, check if a title such as "The executive said..."
-                                        p1a = re.findall(r'(' + l1 + r')', stence, re.IGNORECASE)
-                                        p1b = re.findall(r'(' + l2 + r')', stence, re.IGNORECASE)
-                                        p1c = re.findall(r'(' + l3 + r')', stence, re.IGNORECASE)
-                                        p1d = re.findall(r'(' + l4 + r')', stence, re.IGNORECASE)
-                                        p1e = re.findall(r'(' + l5 + r')', stence)
-                                        p1 = p1a + p1b + p1c + p1d + p1e
-                                        p1 = ''.join(''.join(elems) for elems in p1)
-                                        if len(p1) > 0:
-
+                                        role_list = rolesearch(stence)
+                                        role_list = ''.join(''.join(elems) for elems in role_list)
+                                        if len(role_list) > 0:
 
                                             h.quote = stence
-                                            h.last = most_recent_person[0]
-                                            h.person = most_recent_person[1]
-                                            h.role = most_recent_person[2]
-                                            h.firm = most_recent_person[3]
+                                            h.last = person_set(most_recent_person,next_person)[0]
+                                            h.last = person_set(most_recent_person,next_person)[1]
+                                            h.last = person_set(most_recent_person,next_person)[2]
+                                            h.last = person_set(most_recent_person,next_person)[3]
 
                                             h.qtype = "paraphrase"
                                             h.qsaid = "yes"
@@ -1432,7 +1466,7 @@ for art in arts:
                                             h.comment = "title reference"
                                             h.todf()
                                             dx += 1
-                                        elif len(p1) == 0:
+                                        elif len(role_list) == 0:
                                             # see if it's a representative of a firm
                                             if len(orgs) > 0:
                                                 for org in orgs:
@@ -1523,10 +1557,10 @@ for art in arts:
                                             h.sentiment = sentiments[i]
                                             h.n = nindex[i]
                                             # Then it must be the most recent person, who is from this sentence
-                                            h.last = most_recent_person[0]
-                                            h.person = most_recent_person[1]
-                                            h.role = most_recent_person[2]
-                                            h.firm = most_recent_person[3]
+                                            h.last = person_set(most_recent_person,next_person)[0]
+                                            h.last = person_set(most_recent_person,next_person)[1]
+                                            h.last = person_set(most_recent_person,next_person)[2]
+                                            h.last = person_set(most_recent_person,next_person)[3]
                                             h.qtype = "multi-sentence quote"
                                             h.qsaid = "yes"
                                             h.qpref = "no"
@@ -1539,10 +1573,10 @@ for art in arts:
                                             h.quote = msent_quotes[i]
                                             h.stence = stences[i]
                                             # Then it must be the most recent person
-                                            h.last = most_recent_person[0]
-                                            h.person = most_recent_person[1]
-                                            h.role = most_recent_person[2]
-                                            h.firm = most_recent_person[3]
+                                            h.last = person_set(most_recent_person,next_person)[0]
+                                            h.last = person_set(most_recent_person,next_person)[1]
+                                            h.last = person_set(most_recent_person,next_person)[2]
+                                            h.last = person_set(most_recent_person,next_person)[3]
                                             h.qtype = "multi-sentence quote"
                                             h.qsaid = "yes"
                                             h.qpref = "no"
@@ -1756,14 +1790,15 @@ for art in arts:
                         x1 = ''.join(''.join(elems) for elems in x1)
                         x1 = re.sub(r'(' + qs + r')', '', x1)
                         # if so, must be from the most recent person referenced in the article
+
                         if len(x1) > 0:
                             quote = x1
                             quote = re.sub(r'^' + stext + r'.+', '', quote)
                             h.quote = re.sub(r'' + stext + r'\Z', '', quote)
-                            h.last = most_recent_person[0]
-                            h.person = most_recent_person[1]
-                            h.role = most_recent_person[2]
-                            h.firm = most_recent_person[3]
+                            h.last = person_set(most_recent_person,next_person)[0]
+                            h.last = person_set(most_recent_person,next_person)[1]
+                            h.last = person_set(most_recent_person,next_person)[2]
+                            h.last = person_set(most_recent_person,next_person)[3]
 
                             h.qtype = "single sentence quote"
                             h.qsaid = "no"
@@ -1771,6 +1806,8 @@ for art in arts:
                             h.comment = "Quote with at least two words inside"
                             h.todf()
                             dx += 1
+
+
                         # Because no said equiv or full quote, check if it's a beginning of multi-sentence quote
                         elif len(x1) == 0:
 
@@ -1824,10 +1861,10 @@ for art in arts:
                                                 h.stence = stences[i]
                                                 h.sentiment = sentiments[i]
                                                 h.n = nindex[i]
-                                                h.last = most_recent_person[0]
-                                                h.person = most_recent_person[1]
-                                                h.role = most_recent_person[2]
-                                                h.firm = most_recent_person[3]
+                                                h.last = person_set(most_recent_person,next_person)[0]
+                                                h.last = person_set(most_recent_person,next_person)[1]
+                                                h.last = person_set(most_recent_person,next_person)[2]
+                                                h.last = person_set(most_recent_person,next_person)[3]
                                                 h.qtype = "multi-sentence quote"
                                                 h.qsaid = "no"
                                                 h.qpref = "no"
@@ -1835,6 +1872,7 @@ for art in arts:
                                                 h.todf()
                                                 h.n = n
                                                 dx += 1
+
 
                     ##################################
                     # ONE OR MORE PEOPLE REFERENCED
@@ -1896,558 +1934,17 @@ for art in arts:
                                 quote = q1
                                 quote = re.sub(r'^' + stext + r'.+', '', quote)
                                 h.quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                h.last = most_recent_person[0]
-                                h.person = most_recent_person[1]
-                                h.role = most_recent_person[2]
-                                h.firm = most_recent_person[3]
+                                h.last = person_set(most_recent_person,next_person)[0]
+                                h.last = person_set(most_recent_person,next_person)[1]
+                                h.last = person_set(most_recent_person,next_person)[2]
+                                h.last = person_set(most_recent_person,next_person)[3]
                                 h.qtype = "multi-sentence quote"
                                 h.qsaid = "no"
                                 h.qpref = "one or more"
                                 h.comment = "high accuracy - prior person referenced"
                                 h.todf()
                                 dx += 1
-
-                                """
-                                # If there's no multi-sentence beginning here and no full quote,
-                                # then it's just information with reference to 1+ people
-                                elif len(q1) == 0:
-                                    for per in prows:
-                                        h.quote = stence
-                                        h.last = per[0]
-                                        h.person = per[1]
-                                        h.role = per[2]
-                                        h.firm = per[3]
-                                        h.qtype = "Information"
-                                        h.qsaid = "no"
-                                        h.qpref = "one or more"
-                                        h.comment = "Just information concerning one or more people"
-                                        h.todf()
-                                        dx += 1
-               
-                ##################################
-                # NO PEOPLE IN CUMULATIVE LIST YET
-                ##################################
-                if len(people) == 0:
-    
-                    # This should be rare because typically the first mentioning of a person includes the title and organization.
-                    # Because no person (i.e., with firm, title, and name) associated with it yet, see if at least a Person:
-                    # If exactly 1 person, check if quotes. No need to check for pronouns yet because no reference yet:
-    
-                    if len(ppl) == 1:
-                        per = ppl[0]
-                        # Quote then person then said equivalent
-                        s1a = re.findall(r'(' + start + r')(.+)(' + end + r').+(' + per + r').+(' + stext + r')',
-                                         stence,
-                                         re.IGNORECASE)
-                        s1b = re.findall(r'(' + start + r')(.+)(' + end + r').+(' + stext + r').+(' + per + r')',
-                                         stence,
-                                         re.IGNORECASE)
-                        # Said equiv then last name then a quote (distance not matter here because sometimes full title in between)
-                        s1c = re.findall(r'(' + per + r').+(' + stext + r').+(' + start + r')(.+)(' + end + r')',
-                                         stence,
-                                         re.IGNORECASE)
-                        s1d = re.findall(r'(' + stext + r').+(' + per + r').+(' + start + r')(.+)(' + end + r')',
-                                         stence,
-                                         re.IGNORECASE)
-                        s1 = s1a + s1b + s1c + s1d
-                        s1 = ''.join(''.join(elems) for elems in s1)
-                        s1 = re.sub(r'(' + qs + r')', '', s1)
-                        s1 = re.sub(r'(' + stext + r')', '', s1)
-                        s1 = re.sub(r'' + per + r'', '', s1)
-                        if len(s1) > 0:
-                            # If so, check if person is also near title
-                            m = shortrolesearch(filtered_sent, per, mxorg1)[0]
-    
-                            ol = ''.join(''.join(elems) for elems in m)
-                            # If name and person are close to title, assign
-                            if len(ol) > 0:
-    
-                                h.role = ""
-                                for i in m:
-                                    j = ''.join(''.join(elems) for elems in i)
-                                    h.role = re.sub(r'' + per + r'', '', j)
-                                    h.role = re.sub(r',', '', h.role)
-                                    if len(h.role) > 0:
-                                        break
-                                if len(corgs) == 1:
-                                    h.firm = corgs[0]
-                                    h.comment = "No full profile of person yet"
-                                elif len(corgs) > 0:
-                                    h.firm = "NA"
-                                    h.comment = "review - no full profile of person yet"
-                                h.person = per
-                                sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                if len(sfx) > 0:
-                                    h.last = h.person.split()[-2]
-                                elif len(sfx) == 0:
-                                    h.last = h.person.split()[-1]
-    
-                                h.qtype = "single sentence quote"
-                                h.qsaid = "yes"
-                                h.qpref = "yes"
-                                h.comment = "review - no full profile of person yet"
-                                quote = s1
-                                h.quote = re.sub(r'' + per + '', '', quote)
-                                h.todf()
-                                dx += 1
-                            # If not title, then we mark the person and the quote
-                            elif (ol) == 0:
-    
-                                h.person = per
-                                sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                if len(sfx) > 0:
-                                    h.last = h.person.split()[-2]
-                                elif len(sfx) == 0:
-                                    h.last = h.person.split()[-1]
-                                h.firm = "NA"
-                                h.role = "NA"
-                                h.qtype = "single sentence quote"
-                                h.qsaid = "yes"
-                                h.qpref = "yes"
-                                h.comment = "review - no full profile of person yet"
-                                quote = s1
-                                h.quote = re.sub(r'' + per + '', '', quote)
-                                h.todf()
-                                dx += 1
-                        elif len(s1) == 0:
-                            # check if a quote begins in this sentence:
-                            q1a = re.findall(r'(' + per + r').+(' + stext + r').+(' + start + r')(.+)', stence,
-                                             re.IGNORECASE)
-                            q1b = re.findall(r'(' + stext + r').+(' + per + r').+(' + start + r')(.+)', stence,
-                                             re.IGNORECASE)
-                            q1 = q1a + q1b
-                            q1 = ''.join(''.join(elems) for elems in q1)
-                            q1 = re.sub(r'(' + qs + r')', '', q1)
-                            q1 = re.sub(r'(' + stext + r')', '', q1)
-                            q1 = re.sub(r'' + per + r'', '', q1)
-    
-                            # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
-                            if len(q1) > 0:
-                                for s in range(n, len(doc.sentences)):
-                                    j = doc.sentences[s]
-                                    t = j.text
-                                    q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
-                                    q2 = ''.join(''.join(elems) for elems in q2)
-                                    q2 = re.sub(r'(' + qs + r')', '', q2)
-                                    if len(q2) == 0:
-                                        q1 = q1 + " " + t
-                                    if len(q2) > 0:
-                                        q1 = q1 + " " + q2
-                                        break
-    
-                                sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                h.person = per
-                                if len(sfx) > 0:
-                                    h.last = h.person.split()[-2]
-                                elif len(sfx) == 0:
-                                    h.last = h.person.split()[-1]
-    
-                                h.firm = "NA"
-                                h.role = "NA"
-                                h.qtype = "multi-sentence quote"
-                                h.qsaid = "yes"
-                                h.qpref = "yes"
-                                quote = q1
-                                quote = re.sub(r'^' + stext + r'.+', '', quote)
-                                h.quote = re.sub(r'' + stext + r'\Z', '', quote)
-                                h.comment = "review - no full profile of person yet"
-                                h.todf()
-                                dx += 1
-    
-    
-                            # If one person but no quote single or multiple, check for orgs
-                            elif len(q1) == 0:
-                                # If one org and one person, check if said:
-                                if len(orgs) == 1:
-                                    # If so, then assign
-                                    s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
-                                    if len(s) > 0:
-                                        h.person = per
-                                        sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                        if len(sfx) > 0:
-                                            h.last = h.person.split()[-2]
-                                        elif len(sfx) == 0:
-                                            h.last = h.person.split()[-1]
-    
-                                        h.firm = orgs[0]
-                                        h.role = "NA"
-                                        h.qtype = "paraphrase"
-                                        h.qsaid = "yes"
-                                        h.qpref = "one firm"
-                                        h.comment = "statement by the firm"
-                                        h.quote = stence
-                                        h.todf()
-                                        dx += 1
-                                    elif len(s) == 0:
-                                        h.person = per
-                                        sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                        if len(sfx) > 0:
-                                            h.last = h.person.split()[-2]
-                                        elif len(sfx) == 0:
-                                            h.last = h.person.split()[-1]
-    
-                                        h.firm = orgs[0]
-                                        h.role = "NA"
-                                        h.qtype = "information"
-                                        h.qsaid = "no"
-                                        h.qpref = "one firm"
-                                        h.comment = "information about individual"
-                                        h.quote = stence
-                                        h.todf()
-                                        dx += 1
-                                # if 2+ orgs, check for said
-                                elif len(orgs) > 1:
-                                    s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
-                                    if len(s) > 0:
-                                        h.person = per
-                                        sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                        if len(sfx) > 0:
-                                            h.last = h.person.split()[-2]
-                                        elif len(sfx) == 0:
-                                            h.last = h.person.split()[-1]
-    
-                                        h.firm = ''.join(''.join(elems) for elems in orgs)
-                                        h.role = "NA"
-                                        h.qtype = "paraphrase"
-                                        h.qsaid = "yes"
-                                        h.qpref = "multiple firms"
-                                        h.comment = "review - statement by one of multiple firms"
-                                        h.quote = stence
-                                        h.todf()
-                                        dx += 1
-    
-                                    elif len(s) == 0:
-                                        h.person = per
-                                        sfx = re.findall(r'(' + suf + r')', h.person, re.IGNORECASE)
-                                        if len(sfx) > 0:
-                                            h.last = h.person.split()[-2]
-                                        elif len(sfx) == 0:
-                                            h.last = h.person.split()[-1]
-    
-                                        h.firm = ''.join(''.join(elems) for elems in orgs)
-                                        h.role = "NA"
-                                        h.qtype = "information"
-                                        h.qsaid = "yes"
-                                        h.qpref = "multiple firms"
-                                        h.comment = "one person and multiple firms"
-                                        h.quote = stence
-                                        h.todf()
-                                        dx += 1
-    
-    
-                                elif len(orgs) == 0:
-                                    s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
-                                    if len(s) > 0:
-                                        # If no quote single or multiple, no org, and no people list, then information
-                                        h.person = per
-                                        sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                        if len(sfx) > 0:
-                                            h.last = person.split()[-2]
-                                        elif len(sfx) == 0:
-                                            h.last = person.split()[-1]
-    
-                                        h.firm = "NA"
-                                        h.role = "NA"
-                                        h.qtype = "paraphrase"
-                                        h.qsaid = "yes"
-                                        h.qpref = "yes"
-                                        h.quote = stence
-                                        h.comment = "From one person"
-                                        h.todf()
-                                        dx += 1
-                                    if len(s) == 0:
-                                        # If no quote single or multiple, no org, and no people list, then information
-                                        h.person = per
-                                        sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                        if len(sfx) > 0:
-                                            h.last = person.split()[-2]
-                                        elif len(sfx) == 0:
-                                            h.last = person.split()[-1]
-    
-                                        h.firm = "NA"
-                                        h.role = "NA"
-                                        h.qtype = "information"
-                                        h.qsaid = "yes"
-                                        h.qpref = "yes"
-                                        h.quote = stence
-                                        h.comment = "Information about one person"
-                                        h.todf()
-                                        dx += 1
-    
-                    elif len(ppl) > 1:
-                        # Very rare. If more than one person (without titles/orgs), include any organizations in the sentence
-                        # flag for review
-                        for per in ppl:
-                            h.quote = stence
-                            h.person = per
-                            sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                            if len(sfx) > 0:
-                                h.last = person.split()[-2]
-                            elif len(sfx) == 0:
-                                h.last = person.split()[-1]
-    
-                            h.firm = ''.join(''.join(elems) for elems in orgs)
-                            h.role = "NA"
-                            h.qtype = "Information"
-                            h.qsaid = "no"
-                            h.qpref = "more than one"
-                            h.comment = "review - no full profile of person yet"
-                            h.todf()
-                            dx += 1
-                    elif len(ppl) == 0:
-    
-                        if len(orgs) == 1:
-                            s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
-                            if len(s) > 0:
-                                h.last = "NA"
-                                h.person = "NA"
-                                h.firm = orgs[0]
-                                h.role = "NA"
-                                h.qtype = "paraphrase"
-                                h.qsaid = "yes"
-                                h.qpref = "one - firm"
-                                h.comment = "statement by the firm"
-                                h.quote = stence
-                                h.todf()
-                                dx += 1
-                            elif len(s) == 1:
-                                h.last = "NA"
-                                h.person = "NA"
-                                h.firm = orgs[0]
-                                h.role = "NA"
-                                h.qtype = "information"
-                                h.qsaid = "yes"
-                                h.qpref = "one - firm"
-                                h.comment = "info about a firm"
-                                h.quote = stence
-                                h.todf()
-                                dx += 1
-    
-                        elif len(orgs) > 1:
-                            s = re.findall(r'' + stext + '', stence, re.IGNORECASE)
-    
-                            if len(s) > 0:
-                                # If someone said something, see if it's a representative of a firm
-                                for org in orgs:
-                                    m1 = re.findall(r'' + org + r'\s+(' + rep + r')', filtered_sent, re.IGNORECASE)
-                                    m2 = re.findall(r'(' + rep + r')\s+of\s+' + org + r'', filtered_sent, re.IGNORECASE)
-                                    m = m1 + m2
-                                    m = ''.join(''.join(elems) for elems in m)
-                                    m = re.sub(r'(' + org + r')', '', m)
-                                    if len(m) > 0:
-                                        h.last = "NA"
-                                        h.person = "NA"
-                                        h.firm = org
-                                        h.role = m
-                                        h.qtype = "paraphrase"
-                                        h.qsaid = "yes"
-                                        h.qpref = "one or more firms"
-                                        h.comment = "one or more firm representatives said something"
-                                        h.quote = stence
-                                        h.todf()
-                                        dx += 1
-    
-    
-                        # No people list, no people, no org, see if a quote
-                        elif len(orgs) == 0:
-                            # see if quote
-                            # Quote then person then said equivalent
-                            s1a = re.findall(r'(' + start + r')(.+)(' + end + r').+(' + stext + r')', stence,
-                                             re.IGNORECASE)
-                            s2a = re.findall(r'(' + start + r')(.+)(' + end + r').+(' + stext + r')', stence,
-                                             re.IGNORECASE)
-                            s = s1a + s2a
-                            s = ''.join(''.join(elems) for elems in s)
-                            s = re.sub(r'(' + qs + r')', '', s)
-                            s = re.sub(r'(' + stext + r')', '', s)
-                            if len(s) > 0:
-                                # Check for pronoun:
-                                s3a = re.findall(r'' + pron + r'', filtered_sent, re.IGNORECASE)
-                                if len(s3a) > 0:
-                                    # Check if there's something in most_recent_person:
-                                    if len(most_recent_person) > 0:
-                                        # check when the last person reference was
-                                        # The second items, the item in the person list, must be last because
-                                        # most_recent_person has n ongoing
-                                        m = int(most_recent_person[-1])
-                                        l = n - int(m)
-                                        # If person in the previous sentence, use that one
-                                        if l == 1:
-                                            h.quote = s
-                                            h.last = most_recent_person[0]
-                                            h.person = most_recent_person[1]
-                                            h.firm = most_recent_person[3]
-                                            h.role = most_recent_person[2]
-                                            h.qtype = "single sentence quote"
-                                            h.qsaid = "yes"
-                                            h.qpref = "no"
-                                            h.comment = "pronoun - from previous sentence"
-                                            h.todf()
-                                            dx += 1
-                                        # if no person in previous sentence, then check if quote in previous sentence
-                                        # You should attribute this quote to the person attributed to the previous sentence.
-                                        elif l > 1:
-                                            # Check if there's something in DF:
-                                            if dx>0:
-                                                s = df.loc[len(df.index) - 1].at['sent']
-                                                t = n - int(s)
-                                                if t == 1:
-                                                    h.quote = s
-                                                    h.last = df.loc[len(df.index) - 1].at['last']
-                                                    h.person = df.loc[len(df.index) - 1].at['person']
-                                                    h.firm = df.loc[len(df.index) - 1].at['firm']
-                                                    h.role = df.loc[len(df.index) - 1].at['role']
-                                                    h.qtype = "single sentence quote"
-                                                    h.qsaid = "yes"
-                                                    h.qpref = "no"
-                                                    h.comment = "pronoun - reference partial profile"
-                                                    h.todf()
-                                                    dx += 1
-    
-                            # if no quote, see if beginning of multi-sentence quote:
-                            elif len(s) == 0:
-                                # check if a quote begins in this sentence:
-                                q1a = re.findall(r'^\s*(' + start + r')(.+)', stence, re.IGNORECASE)
-                                q1b = re.findall(r'(' + stext + r').+\s+(' + start + r')(.+)', stence, re.IGNORECASE)
-    
-                                q1 = q1a + q1b
-                                q1 = ''.join(''.join(elems) for elems in q1)
-                                q1 = re.sub(r'(' + qs + r')', '', q1)
-                                q1 = re.sub(r'(' + stext + r')', '', q1)
-    
-                                # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
-                                if len(q1) > 0:
-                                    # set last sentence index to 0. Will shift to the value of s below
-                                    # and use later if necessary.
-                                    nm = 0
-                                    q2a = ""
-                                    for s in range(n, len(doc.sentences)):
-                                        j = doc.sentences[s]
-                                        t = j.text
-                                        q2 = re.findall(r'(.+)(' + end + r')', t, re.IGNORECASE)
-                                        q2 = ''.join(''.join(elems) for elems in q2)
-                                        q2 = re.sub(r'(' + qs + r')', '', q2)
-                                        if len(q2) == 0:
-                                            q1 = q1 + " " + t
-                                        else:
-                                            q1 = q1 + " " + q2
-                                            q2a = re.findall(r'(' + end + r')(.+)', t, re.IGNORECASE)
-                                            q2a = ''.join(''.join(elems) for elems in q2a)
-                                            # remember index of the last sentence.
-                                            nm = s
-                                            break
-                                    q1 = re.sub(r'(' + qs + r')', '', q1)
-                                    z1 = re.findall(r'(' + l1 + r')', q2a, re.IGNORECASE)
-                                    z2 = re.findall(r'(' + l2 + r')', q2a, re.IGNORECASE)
-                                    z3 = re.findall(r'(' + l3 + r')', q2a, re.IGNORECASE)
-                                    z4 = re.findall(r'(' + l4 + r')', q2a, re.IGNORECASE)
-                                    z5 = re.findall(r'(' + l5 + r')', q2a)
-                                    m = z1 + z2 + z3 + z4 + z5
-    
-                                    z = ''.join(''.join(elems) for elems in m)
-    
-                                    print(n,q2a)
-                                    if len(z) > 0:
-                                        # was information tied to previous sentence.
-                                        # You should attribute this quote to the person (a partial profile)
-                                        # attributed to the previous sentence.
-                                        # Check if there's something in DF:
-    
-                                        if dx>0:
-                                            s = df.loc[len(df.index) - 1].at['sent']
-                                            t = n - int(s)
-                                            if t == 1:
-                                                h.quote = q1
-                                                h.last = df.loc[len(df.index) - 1].at['last']
-                                                h.person = df.loc[len(df.index) - 1].at['person']
-                                                h.firm = df.loc[len(df.index) - 1].at['firm']
-                                                h.role = ""
-                                                for i in m:
-                                                    j = ''.join(''.join(elems) for elems in i)
-                                                    h.role = re.sub(r',', '', j)
-                                                    if len(h.role) > 0:
-                                                        break
-                                                h.qtype = "multi-sentence quote"
-                                                h.qsaid = "maybe"
-                                                h.qpref = "no"
-                                                h.comment = "Title of previous partial profile person"
-                                                h.todf()
-                                                dx += 1
-    
-    
-    
-    
-                                        # If multi sentence, but nothing in DF yet, you need to check if there's
-                                        # any people, orgs, etc. in the last sentence. So go through the same
-                                        # process as a tthe beginning of the code but only on the last sentence
-                                        # of the multi-sentence quote.
-    
-                                        elif dx ==0:
-                                            if nm > 0 & len(q2a)>0:
-                                                # Check if said equivalent in statement
-                                                yu = re.findall(r'' + stext + r'', q2a, re.IGNORECASE)
-                                                ppl = dfsent["ppl"][nm]
-                                                if len(ppl)>0 & len(yu)>0:
-                                                    h.quote = q1
-                                                    h.last = dfsent.loc[nm].at['people'][0]
-                                                    h.person = dfsent.loc[nm].at['people'][1]
-                                                    h.role = dfsent.loc[nm].at['people'][2]
-                                                    h.firm = dfsent.loc[nm].at['people'][3]
-    
-                                                    h.qtype = "multi-sentence quote"
-                                                    h.qsaid = "maybe"
-                                                    h.qpref = "no"
-                                                    h.comment = "Title of previous partial profile person"
-                                                    h.todf()
-                                                    dx += 1
-    
-    
-    
-                                    # If not, check for pronouns in last sentence
-                                    elif len(z) == 0:
-                                        s4a = re.findall(r'' + pron + r'.+' + stext + r'', q2a, re.IGNORECASE)
-                                        s4b = re.findall(r'' + stext + r'.+' + pron + r'', q2a, re.IGNORECASE)
-                                        z = s4a + s4b
-                                        z = ''.join(''.join(elems) for elems in z)
-    
-                                        if len(z) > 0:
-                                            # was information tied to previous sentence.
-                                            # You should attribute this quote to the person (a partial profile)
-                                            # attributed to the previous sentence.
-                                            # Check if there's something in DF:
-                                            if dx>0:
-                                                s = df.loc[len(df.index) - 1].at['sent']
-                                                t = n - int(s)
-                                                if t == 1:
-                                                    h.quote = q1
-                                                    h.last = df.loc[len(df.index) - 1].at['last']
-                                                    h.person = df.loc[len(df.index) - 1].at['person']
-                                                    h.firm = df.loc[len(df.index) - 1].at['firm']
-                                                    h.role = df.loc[len(df.index) - 1].at['role']
-                                                    h.qtype = "multi-sentence quote"
-                                                    h.qsaid = "maybe"
-                                                    h.qpref = "no"
-                                                    h.comment = "pronoun of previous partial person"
-                                                    h.todf()
-                                                    dx += 1
-                                # If no quote single/multiple, see if any information
-                                if len(q1) == 0:
-                                    if dx>0:
-                                        y = df.loc[len(df.index) - 1].at['last']
-                                        x = re.findall(r'(' + y + r')', filtered_sent, re.IGNORECASE)
-                                        if len(x) > 0:
-                                            h.last = df.loc[len(df.index) - 1].at['last']
-                                            h.person = df.loc[len(df.index) - 1].at['person']
-                                            h.firm = df.loc[len(df.index) - 1].at['firm']
-                                            h.role = df.loc[len(df.index) - 1].at['role']
-                                            h.qtype = "information"
-                                            h.qsaid = "no"
-                                            h.qpref = "yes"
-                                            h.comment = "review potentially info about an individual"
-                                            h.quote = stence
-                                            h.todf()
-                                            dx += 1
-                        """
+                df
                 n += 1
                 h.n += 1
 
@@ -2484,5 +1981,4 @@ df
 # TO DO:
 # "Former" leaders
 # Multiple quotes in a sentence
-# For interviews if 5 sub settings look for Inc, etc. in last one to get the right firm name.
 # Test 25 random ones.
