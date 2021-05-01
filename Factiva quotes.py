@@ -189,13 +189,21 @@ def quote_set_even(sentence):
     quote_split = re.split(r'(' + qs + r')', sentence)
     # Remove blanks if any
     quote_split = list(filter(None, quote_split))
-    # For each item in the list
+    # Remove any items that are quotation marks
+    rex = re.compile(r'' + qs + r'')
+    quote_split = [x for x in quote_split if not rex.match(x)]
+
     for q in range(len(quote_split)):
-        # Only take the 1st, 5th, 9th, etc. item because these
-        # will be statements in between the quotes. The quotation marks are in
-        # positions 0, 2, 4, etc. and words in between quotes are in positions 3, 7, etc.
-        if q % 4 == 1:
-            quotes.append(quote_split[q])
+        quote_beginning = re.findall(r'^\s*(' + start + r')', stence, re.IGNORECASE)
+        if len(quote_beginning) > 0:
+            # Want position 1, 3, etc.
+            if q % 2 == 0:
+                quotes.append(quote_split[q])
+        if len(quote_beginning) == 0:
+            # Want position 0, 2, 4, etc.
+            if q % 2 == 1:
+                quotes.append(quote_split[q])
+
     return quotes
 
 def quote_set(sentence):
@@ -211,6 +219,7 @@ def quote_set(sentence):
     # If there are an even number of quotation marks
     if len(q_marks) % 2 == 0:
         quotes = quote_set_even(sentence)
+
 
     elif len(q_marks) % 2 == 1:
         multi_sent_indicator = 1
@@ -255,7 +264,7 @@ def quote_set(sentence):
 
 # Function for when you want to search with instance of a role and another variable, when distance between
 # doesn't matter.
-def longrolesearch(sentence,non_role_var):
+def longrolesearch(sentence, non_role_var):
     role_list1a = re.findall(r'(' + non_role_var + r').+(' + l1 + r')', sentence, re.IGNORECASE)
     role_list1b = re.findall(r'(' + non_role_var + r').+(' + l2 + r')', sentence, re.IGNORECASE)
     role_list1c = re.findall(r'(' + non_role_var + r').+(' + l3 + r')', sentence, re.IGNORECASE)
@@ -322,26 +331,27 @@ def shortrolesearch(sentence, non_role_var, max_char):
 
 def whoserolesearch(sentence,non_role_var, max_char):
     o3a = re.findall(
-        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(whose\s+(' + l1 + ')))',
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?whose\s+(' + l1 + '))',
         sentence,
         re.IGNORECASE)
     o3b = re.findall(
-        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(whose\s+(' + l2 + ')))',
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?whose\s+(' + l2 + '))',
         sentence,
         re.IGNORECASE)
     o3c = re.findall(
-        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(whose\s+(' + l3 + ')))',
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?whose\s+(' + l3 + '))',
         sentence,
         re.IGNORECASE)
     o3d = re.findall(
-        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(whose\s+(' + l4 + ')))',
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?whose\s+(' + l4 + '))',
         sentence,
         re.IGNORECASE)
     o3e = re.findall(
-        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?(whose\s+(' + l5 + ')))',
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?whose\s+(' + l5 + '))',
         sentence)
 
     org_find = o3a + o3b + o3c + o3d + o3e
+
     return org_find
 
 def ofrolesearch(sentence, non_role_var, max_char):
@@ -495,7 +505,7 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(221,228)
-arts = [14]
+arts = [205]
 for art in arts:
 #for art in dfa.index:
     #try:
@@ -830,6 +840,16 @@ for art in arts:
                             elif len(sfx) == 0:
                                 l = ent.text.split()[-1]
                                 lasts.append(l)
+                    # Check if a last name was incorrectly marked as not a PERSON (e.g., an ORG)
+                    # and if so, assign as PERSON
+                    else:
+                        if len(people) > 0:
+                            for per in people:
+                                last = per[0]
+                                last_said = re.findall('(' + last + r')', filtered_sent, re.IGNORECASE)
+                                last_in_sent = ''.join(''.join(elems) for elems in last_said)
+                                if len(last_in_sent) > 0:
+                                    ppl.append(last)
                 # Next the products, to be used for the orgs
                 for ent in sent.ents:
                     if ent.type == "PRODUCT":
@@ -888,6 +908,7 @@ for art in arts:
                             # If exactly 1 org, not matter where the person is in proximity of title/role
                             if len(orgs) == 1:
                                 role_list = longrolesearch(filtered_sent, per)
+
 
                             # If either 0 or >1 orgs, check if person and title are close
                             else:
@@ -1053,6 +1074,7 @@ for art in arts:
                                                 elif len(sfx) == 0:
                                                     last = person.split()[-1]
 
+
                                                 role = role_set(m, o)
 
                                                 firm = o
@@ -1141,7 +1163,7 @@ for art in arts:
                             # If there's a titled person with no org, it may be the org in previous reference
                             # If a repeat person, this will be filtered out below.
                             elif len(orgs) == 0:
-                                if len(df) > 0:
+                                if len(dfsent) > 0:
                                     person = per
                                     sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
                                     if len(sfx) > 0:
@@ -1149,7 +1171,9 @@ for art in arts:
                                     elif len(sfx) == 0:
                                         last = person.split()[-1]
                                     role = role_set(role_list, per)
-                                    firm = df.loc[len(df.index) - 1].at['firm']
+                                    firms = dfsent.iloc[n-2]['orgs']
+                                    if len(firms) == 1:
+                                        firm = firms[0]
                         # If there's no leadership position, check if there is a person
                         # If there is and it says "of" something, add it to the people list
                         elif len(role_list) == 0:
@@ -1256,32 +1280,31 @@ for art in arts:
                                     # manipulate the count to start on this row and move backwards
                                     # (up to top of the df)
                                     unassigned_last = ""
+                                    unassigned_person = []
                                     index = int(n-2-sindex)
-                                    unassigned_person = dfsent.iloc[index]['ppl']
+                                    unassigned_persons = dfsent.iloc[index]['ppl']
                                     people_list = dfsent.iloc[index]['people']
-                                    sfx = re.findall(r'(' + suf + r')',  unassigned_person, re.IGNORECASE)
+                                    if len(unassigned_persons)>0:
+                                        unassigned_person = unassigned_persons[0]
+                                        sfx = re.findall(r'(' + suf + r')',  unassigned_person, re.IGNORECASE)
+                                        if len(sfx) > 0:
+                                            unassigned_last = unassigned_person.split()[-2]
+                                        elif len(sfx) == 0:
+                                            unassigned_last = unassigned_person.split()[-1]
 
-
-                                    print(unassigned_person)
-
-                                    if len(sfx) > 0:
-                                        unassigned_last = unassigned_person.split()[-2]
-                                    elif len(sfx) == 0:
-                                        unassigned_last = unassigned_person.split()[-1]
-
-                                    if len(unassigned_person) == 0:
-                                        continue
-                                    else:
-                                        if unassigned_last in lsts:
+                                        if len(unassigned_person) == 0:
                                             continue
                                         else:
-                                            role = role_set(rolesearch(filtered_sent), '')
-                                            if len(role)>0:
-                                                firm = "NOTNAMED"
-                                                person = unassigned_person
-                                                last = unassigned_last
-                                                people = make_row(last, person, role, firm, n, people)
-                                                break
+                                            if unassigned_last in lsts:
+                                                continue
+                                            else:
+                                                role = role_set(rolesearch(filtered_sent), '')
+                                                if len(role)>0:
+                                                    firm = "NOTNAMED"
+                                                    person = unassigned_person
+                                                    last = unassigned_last
+                                                    people = make_row(last, person, role, firm, n, people)
+                                                    break
 
 
 
@@ -1390,6 +1413,7 @@ for art in arts:
                 quotes = quote_set(stence)[13]
                 multi_sent_indicator = quote_set(stence)[14]
                 psent_index = n - 2
+
 
                 ##################################
                 # SENTENCES WITH A "SAID" EQUIVALENT
@@ -1501,29 +1525,68 @@ for art in arts:
                                                 h.n = n
 
                                 elif len(orgs) > 1:
+                                    for org in orgs:
+                                        # check if spokeperson
+                                        k1 = re.findall(
+                                            r'(' + rep + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + org + r')',
+                                            filtered_sent, re.IGNORECASE)
+                                        k2 = re.findall(
+                                            r'(' + org + r')\W+(?:\w+\W+){0,' + str(mxorg1) + r'}?(' + rep + r')',
+                                            filtered_sent, re.IGNORECASE)
+                                        k = k1 + k2
+                                        k = ''.join(''.join(elems) for elems in k)
+                                        k = re.sub(r'(' + qs + r')', '', k)
+                                        if len(k) > 0:
+                                            h.last = "NA"
+                                            # The person would be the representative's reference,
+                                            # removing the org name
+                                            h.person = "NA"
+                                            h.firm = org
+                                            h.role = re.sub(r'' + org + '', '', k)
+                                            h.qsaid = "yes"
+                                            h.qpref = "no"
+                                            h.comment = "Org representative"
+                                            for q in quotes:
+                                                h.quote = q
+                                                h.qtype = "single sentence quote"
+                                                h.todf()
+                                                dx += 1
+                                            if multi_sent_indicator == 1:
+                                                for i in range(0, len(msent_quotes)):
+                                                    h.quote = msent_quotes[i]
+                                                    h.stence = stences[i]
+                                                    h.sentiment = sentiments[i]
+                                                    h.n = nindex[i]
+                                                    h.qtype = "multi-sentence quote"
+                                                    h.todf()
+                                                    h.n = n
+                                            break
 
-                                    h.last = "NA"
-                                    h.person = "NA"
-                                    h.firm = ''.join(''.join(elems) for elems in orgs)
-                                    h.role = "NA"
-                                    h.qtype = "Information - non-discript single sentence quote"
-                                    h.qsaid = "yes"
-                                    h.qpref = "no"
-                                    h.comment = "Review - from nondiscriptives"
-                                    for q in quotes:
-                                        h.quote = q
-                                        h.qtype = "single sentence quote"
-                                        h.todf()
-                                        dx += 1
-                                    if multi_sent_indicator == 1:
-                                        for i in range(0, len(msent_quotes)):
-                                            h.quote = msent_quotes[i]
-                                            h.stence = stences[i]
-                                            h.sentiment = sentiments[i]
-                                            h.n = nindex[i]
-                                            h.qtype = "multi-sentence quote"
-                                            h.todf()
-                                            h.n = n
+                                        elif len(k) == 0:
+                                            h.last = "NA"
+                                            h.person = "NA"
+                                            h.firm = ''.join(''.join(elems) for elems in orgs)
+                                            h.role = "NA"
+                                            h.qtype = "Information - non-discript single sentence quote"
+                                            h.qsaid = "yes"
+                                            h.qpref = "no"
+                                            h.comment = "Review - from nondiscriptives"
+                                            for q in quotes:
+                                                h.quote = q
+                                                h.qtype = "single sentence quote"
+                                                h.todf()
+                                                dx += 1
+                                            if multi_sent_indicator == 1:
+                                                for i in range(0, len(msent_quotes)):
+                                                    h.quote = msent_quotes[i]
+                                                    h.stence = stences[i]
+                                                    h.sentiment = sentiments[i]
+                                                    h.n = nindex[i]
+                                                    h.qtype = "multi-sentence quote"
+                                                    h.todf()
+                                                    h.n = n
+
+
 
                                 elif len(orgs) == 0:
                                     # if there is a said equivalent and quote but no person, no org, and no pronoun
@@ -1626,8 +1689,8 @@ for art in arts:
                                 dx += 1
 
 
-                            # If said equivalent, no people, no quote, no plural, check if pronoun, rep, and finally
-                            # Org
+                            # If said equivalent, no people, no quote, no plural, check if pronoun, rep,
+                            # and finally Org
                             elif len(m) == 0:
 
                                 k1 = re.findall(
@@ -1738,44 +1801,45 @@ for art in arts:
                         # multi-sentence quote
                         else:
                             # If there is a multi-sentence quote, then do stuff
-                            if multi_sent_indicator == 1:
-                                # We know there is a said equivalent in the first sentence
-                                # So now it's just checking who said it.
-                                # First, check if person:
-                                if len (first_ppl) > 0:
-                                    if len(first_pron) == 0:
-                                        for i in range(0, len(msent_quotes)):
+                            if msent_quote is not None:
+                                if len(msent_quote) > 0:
+                                    # We know there is a said equivalent in the first sentence
+                                    # So now it's just checking who said it.
+                                    # First, check if person:
+                                    if len (first_ppl) > 0:
+                                        if len(first_pron) == 0:
+                                            for i in range(0, len(msent_quotes)):
 
-                                            h.quote = msent_quotes[i]
-                                            h.stence = stences[i]
-                                            h.sentiment = sentiments[i]
-                                            h.n = nindex[i]
-                                            # Then it must be the most recent person, who is from this sentence
-                                            h.last = person_set(most_recent_person, next_person)[0]
-                                            h.person = person_set(most_recent_person, next_person)[1]
-                                            h.role = person_set(most_recent_person, next_person)[2]
-                                            h.firm = person_set(most_recent_person, next_person)[3]
-                                            h.qtype = "multi-sentence quote"
-                                            h.qsaid = "yes"
-                                            h.qpref = "no"
-                                            h.comment = "Person named in first sentence"
-                                            h.todf()
-                                            h.n = n
+                                                h.quote = msent_quotes[i]
+                                                h.stence = stences[i]
+                                                h.sentiment = sentiments[i]
+                                                h.n = nindex[i]
+                                                # Then it must be the most recent person, who is from this sentence
+                                                h.last = person_set(most_recent_person, next_person)[0]
+                                                h.person = person_set(most_recent_person, next_person)[1]
+                                                h.role = person_set(most_recent_person, next_person)[2]
+                                                h.firm = person_set(most_recent_person, next_person)[3]
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "yes"
+                                                h.qpref = "no"
+                                                h.comment = "Person named in first sentence"
+                                                h.todf()
+                                                h.n = n
 
-                                    elif len(first_pron) > 0:
-                                        for i in range(0, len(msent_quotes)):
-                                            h.quote = msent_quotes[i]
-                                            h.stence = stences[i]
-                                            # Then it must be the most recent person
-                                            h.last = person_set(most_recent_person, next_person)[0]
-                                            h.person = person_set(most_recent_person, next_person)[1]
-                                            h.role = person_set(most_recent_person, next_person)[2]
-                                            h.firm = person_set(most_recent_person, next_person)[3]
-                                            h.qtype = "multi-sentence quote"
-                                            h.qsaid = "yes"
-                                            h.qpref = "no"
-                                            h.comment = "Pronoun"
-                                            h.todf()
+                                        elif len(first_pron) > 0:
+                                            for i in range(0, len(msent_quotes)):
+                                                h.quote = msent_quotes[i]
+                                                h.stence = stences[i]
+                                                # Then it must be the most recent person
+                                                h.last = person_set(most_recent_person, next_person)[0]
+                                                h.person = person_set(most_recent_person, next_person)[1]
+                                                h.role = person_set(most_recent_person, next_person)[2]
+                                                h.firm = person_set(most_recent_person, next_person)[3]
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "yes"
+                                                h.qpref = "no"
+                                                h.comment = "Pronoun"
+                                                h.todf()
 
 
                     # if said something and exactly one person from list, do stuff
@@ -1783,6 +1847,7 @@ for art in arts:
                         ##################################
                         # ONE AND ONLY ONE PEOPLE REFERENCE
                         ##################################
+
                         h.last = last = prows[0][0]
 
                         # Check for FULL quotes:
@@ -1835,54 +1900,56 @@ for art in arts:
 
                         # Check if the multiple sentence quote
                         elif len(s1) == 0:
-                            if multi_sent_indicator == 1:
-                                for i in range(0, len(msent_quotes)):
-                                    h.quote = msent_quotes[i]
-                                    h.stence = stences[i]
-                                    h.sentiment = sentiments[i]
-                                    h.n = nindex[i]
-                                    h.last = prows[0][0]
-                                    h.person = prows[0][1]
-                                    h.role = prows[0][2]
-                                    h.firm = prows[0][3]
-                                    h.qtype = "multi-sentence quote"
-                                    h.qsaid = "yes"
-                                    h.qpref = "single"
-                                    h.comment = "high accuracy"
-                                    h.todf()
-                                    h.n = n
-                                    dx += 1
+
+                            if msent_quote is not None:
+                                if len(msent_quote) > 0:
+                                    for i in range(0, len(msent_quotes)):
+                                        h.quote = msent_quotes[i]
+                                        h.stence = stences[i]
+                                        h.sentiment = sentiments[i]
+                                        h.n = nindex[i]
+                                        h.last = prows[0][0]
+                                        h.person = prows[0][1]
+                                        h.role = prows[0][2]
+                                        h.firm = prows[0][3]
+                                        h.qtype = "multi-sentence quote"
+                                        h.qsaid = "yes"
+                                        h.qpref = "single"
+                                        h.comment = "high accuracy"
+                                        h.todf()
+                                        h.n = n
+                                        dx += 1
                             # If there is no full quote and no multi-sentence quote, but there is an ending quote and a person,
-                            # update the previous row with this person. The previous row was a multi-sentence quote defaulted
+                            # update the previous row with this person. The previous row was a multi-sentence quote
                             # defaulted as the most previous person mentioned. So this will just confirm the previous person,
                             # or update it appropriately
-                            if multi_sent_indicator == 1:
-                                q1a = re.findall(r'(' + end + r').+(' + stext + r').+(' + last + r')', stence,
-                                                 re.IGNORECASE)
-                                q1b = re.findall(r'(' + end + r').+(' + last + r').+(' + stext + r')', stence,
-                                                 re.IGNORECASE)
-                                q1 = q1a + q1b
-                                q1 = ''.join(''.join(elems) for elems in q1)
-                                q = re.sub(r'(' + qs + r')', '', q1)
+                            q1a = re.findall(r'(' + end + r').+(' + stext + r').+(' + last + r')', stence,
+                                             re.IGNORECASE)
+                            q1b = re.findall(r'(' + end + r').+(' + last + r').+(' + stext + r')', stence,
+                                             re.IGNORECASE)
+                            q1 = q1a + q1b
+                            q1 = ''.join(''.join(elems) for elems in q1)
+                            q = re.sub(r'(' + qs + r')', '', q1)
+                            # Just update the previous person profile
+                            if len(q) > 0:
+                                df.loc[len(df.index) - 1].at['last'] = prows[0][0]
+                                df.loc[len(df.index) - 1].at['person'] = prows[0][1]
+                                df.loc[len(df.index) - 1].at['firm'] = prows[0][2]
+                                df.loc[len(df.index) - 1].at['role'] = prows[0][3]
 
-                                if len(q) > 0:
-                                    df.loc[len(df.index) - 1].at['last'] = prows[0][0]
-                                    df.loc[len(df.index) - 1].at['person'] = prows[0][1]
-                                    df.loc[len(df.index) - 1].at['firm'] = prows[0][2]
-                                    df.loc[len(df.index) - 1].at['role'] = prows[0][3]
+                            elif len(q) == 0:
 
-                                elif len(q1) == 0:
-                                    h.quote = stence
-                                    h.last = prows[0][0]
-                                    h.person = prows[0][1]
-                                    h.role = prows[0][2]
-                                    h.firm = prows[0][3]
-                                    h.qtype = "paraphrase"
-                                    h.qsaid = "yes"
-                                    h.qpref = "single"
-                                    h.comment = "high accuracy"
-                                    h.todf()
-                                    dx += 1
+                                h.quote = stence
+                                h.last = prows[0][0]
+                                h.person = prows[0][1]
+                                h.role = prows[0][2]
+                                h.firm = prows[0][3]
+                                h.qtype = "paraphrase"
+                                h.qsaid = "yes"
+                                h.qpref = "single"
+                                h.comment = "high accuracy"
+                                h.todf()
+                                dx += 1
 
 
                     # If said equivalent but more than one person, do stuff:
@@ -1904,8 +1971,7 @@ for art in arts:
                             # Said equiv then last name then a quote (distance not matter here because sometimes full title in between)
                             s1b = re.findall(
                                 r'(' + h.last + r').+(' + stext + 'r).+(' + start + r')(.+)(' + end + r')',
-                                stence,
-                                re.IGNORECASE)
+                                stence, re.IGNORECASE)
                             s1 = s1a + s1b
                             s1 = ''.join(''.join(elems) for elems in s1)
                             s1 = re.sub(r'(' + qs + r')', '', s1)
@@ -1935,24 +2001,25 @@ for art in arts:
                                 q1 = re.sub(r'' + h.last + r'', '', q1)
 
                                 # If a quote does begin in this sentence, concatinate the subsequent sentences until the quote ends
-
-                                if multi_sent_indicator == 1:
-                                    for i in range(0, len(msent_quotes)):
-                                        h.quote = msent_quotes[i]
-                                        h.stence = stences[i]
-                                        h.sentiment = sentiments[i]
-                                        h.n = nindex[i]
-                                        h.last = prows[0][0]
-                                        h.person = prows[0][1]
-                                        h.role = prows[0][2]
-                                        h.firm = prows[0][3]
-                                        h.qtype = "multi-sentence quote"
-                                        h.qsaid = "yes"
-                                        h.qpref = "multiple"
-                                        h.comment = "review"
-                                        h.todf()
-                                        h.n = n
-                                        dx += 1
+                                if len (q1)>0:
+                                    if msent_quote is not None:
+                                        if len(msent_quote) > 0:
+                                            for i in range(0, len(msent_quotes)):
+                                                h.quote = msent_quotes[i]
+                                                h.stence = stences[i]
+                                                h.sentiment = sentiments[i]
+                                                h.n = nindex[i]
+                                                h.last = prows[0][0]
+                                                h.person = prows[0][1]
+                                                h.role = prows[0][2]
+                                                h.firm = prows[0][3]
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "yes"
+                                                h.qpref = "multiple"
+                                                h.comment = "review"
+                                                h.todf()
+                                                h.n = n
+                                                dx += 1
 
                                 elif len(q1) == 0:
                                     h.quote = stence
@@ -1992,15 +2059,16 @@ for art in arts:
                                 h.qtype = "single sentence quote"
                                 h.todf()
                                 dx += 1
-                            if multi_sent_indicator == 1:
-                                for i in range(0, len(msent_quotes)):
-                                    h.quote = msent_quotes[i]
-                                    h.stence = stences[i]
-                                    h.sentiment = sentiments[i]
-                                    h.n = nindex[i]
-                                    h.qtype = "multi-sentence quote"
-                                    h.todf()
-                                    h.n = n
+                            if msent_quote is not None:
+                                if len(msent_quote) > 0:
+                                    for i in range(0, len(msent_quotes)):
+                                        h.quote = msent_quotes[i]
+                                        h.stence = stences[i]
+                                        h.sentiment = sentiments[i]
+                                        h.n = nindex[i]
+                                        h.qtype = "multi-sentence quote"
+                                        h.todf()
+                                        h.n = n
 
 
                         # Because no said equiv or full quote, check if it's a beginning of multi-sentence quote
@@ -2014,43 +2082,44 @@ for art in arts:
                             # If not, check if a quote begins in this sentence:
                             else:
                                 # If there is a multi-sentence quote, then do stuff
-                                if multi_sent_indicator == 1:
-                                    # Check if there's a person in that last sentence
-                                    if len(last_ppl) > 0:
-                                        for i in range(0, len(msent_quotes)):
-                                            h.quote = msent_quotes[i]
-                                            h.stence = stences[i]
-                                            h.sentiment = sentiments[i]
-                                            h.n = nindex[i]
-                                            h.last = dfsent.loc[last_sindex].at['people'][0][0]
-                                            h.person = dfsent.loc[last_sindex].at['people'][0][1]
-                                            h.role = dfsent.loc[last_sindex].at['people'][0][2]
-                                            h.firm = dfsent.loc[last_sindex].at['people'][0][3]
-                                            h.qtype = "multi-sentence quote"
-                                            h.qsaid = "no"
-                                            h.qpref = "no"
-                                            h.comment = "high accuracy"
-                                            h.todf()
-                                            h.n = n
-                                            dx += 1
+                                if msent_quote is not None:
+                                    if len(msent_quote) > 0:
+                                        # Check if there's a person in that last sentence
+                                        if len(last_ppl) > 0:
+                                            for i in range(0, len(msent_quotes)):
+                                                h.quote = msent_quotes[i]
+                                                h.stence = stences[i]
+                                                h.sentiment = sentiments[i]
+                                                h.n = nindex[i]
+                                                h.last = dfsent.loc[last_sindex].at['people'][0][0]
+                                                h.person = dfsent.loc[last_sindex].at['people'][0][1]
+                                                h.role = dfsent.loc[last_sindex].at['people'][0][2]
+                                                h.firm = dfsent.loc[last_sindex].at['people'][0][3]
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "no"
+                                                h.qpref = "no"
+                                                h.comment = "high accuracy"
+                                                h.todf()
+                                                h.n = n
+                                                dx += 1
 
-                                    elif len(last_ppl) == 0:
-                                        for i in range(0, len(msent_quotes)):
-                                            h.quote = msent_quotes[i]
-                                            h.stence = stences[i]
-                                            h.sentiment = sentiments[i]
-                                            h.n = nindex[i]
-                                            h.last = person_set(most_recent_person, next_person)[0]
-                                            h.person = person_set(most_recent_person, next_person)[1]
-                                            h.role = person_set(most_recent_person, next_person)[2]
-                                            h.firm = person_set(most_recent_person, next_person)[3]
-                                            h.qtype = "multi-sentence quote"
-                                            h.qsaid = "no"
-                                            h.qpref = "no"
-                                            h.comment = "high accuracy"
-                                            h.todf()
-                                            h.n = n
-                                            dx += 1
+                                        elif len(last_ppl) == 0:
+                                            for i in range(0, len(msent_quotes)):
+                                                h.quote = msent_quotes[i]
+                                                h.stence = stences[i]
+                                                h.sentiment = sentiments[i]
+                                                h.n = nindex[i]
+                                                h.last = person_set(most_recent_person, next_person)[0]
+                                                h.person = person_set(most_recent_person, next_person)[1]
+                                                h.role = person_set(most_recent_person, next_person)[2]
+                                                h.firm = person_set(most_recent_person, next_person)[3]
+                                                h.qtype = "multi-sentence quote"
+                                                h.qsaid = "no"
+                                                h.qpref = "no"
+                                                h.comment = "high accuracy"
+                                                h.todf()
+                                                h.n = n
+                                                dx += 1
 
 
                     ##################################
@@ -2087,37 +2156,39 @@ for art in arts:
                                     h.qtype = "single sentence quote"
                                     h.todf()
                                     dx += 1
-                                if multi_sent_indicator == 1:
-                                    for i in range(0, len(msent_quotes)):
-                                        h.quote = msent_quotes[i]
-                                        h.stence = stences[i]
-                                        h.sentiment = sentiments[i]
-                                        h.n = nindex[i]
-                                        h.qtype = "multi-sentence quote"
-                                        h.todf()
-                                        h.n = n
+                                if msent_quote is not None:
+                                    if multi_sent_indicator == 1:
+                                        for i in range(0, len(msent_quotes)):
+                                            h.quote = msent_quotes[i]
+                                            h.stence = stences[i]
+                                            h.sentiment = sentiments[i]
+                                            h.n = nindex[i]
+                                            h.qtype = "multi-sentence quote"
+                                            h.todf()
+                                            h.n = n
                         # Because said equivalent but no full quote, check if it's a beginning of multi-sentence quote
                         # If so, assume it would have to be from the most recent referenced person
                         # As in "he said", referring to the most recent person
                         elif len(x1) == 0:
                             # Check if multi-sentence
-                            if multi_sent_indicator == 1:
-                                for i in range(0, len(msent_quotes)):
-                                    h.quote = msent_quotes[i]
-                                    h.stence = stences[i]
-                                    h.sentiment = sentiments[i]
-                                    h.n = nindex[i]
-                                    h.last = person_set(most_recent_person, next_person)[0]
-                                    h.person = person_set(most_recent_person, next_person)[1]
-                                    h.role = person_set(most_recent_person, next_person)[2]
-                                    h.firm = person_set(most_recent_person, next_person)[3]
-                                    h.qtype = "multi-sentence quote"
-                                    h.qsaid = "no"
-                                    h.qpref = "one or more"
-                                    h.comment = "high accuracy - prior person referenced"
-                                    h.todf()
-                                    h.n = n
-                                    dx += 1
+                            if msent_quote is not None:
+                                if len(msent_quote) > 0:
+                                    for i in range(0, len(msent_quotes)):
+                                        h.quote = msent_quotes[i]
+                                        h.stence = stences[i]
+                                        h.sentiment = sentiments[i]
+                                        h.n = nindex[i]
+                                        h.last = person_set(most_recent_person, next_person)[0]
+                                        h.person = person_set(most_recent_person, next_person)[1]
+                                        h.role = person_set(most_recent_person, next_person)[2]
+                                        h.firm = person_set(most_recent_person, next_person)[3]
+                                        h.qtype = "multi-sentence quote"
+                                        h.qsaid = "no"
+                                        h.qpref = "one or more"
+                                        h.comment = "high accuracy - prior person referenced"
+                                        h.todf()
+                                        h.n = n
+                                        dx += 1
 
 
                 n += 1
@@ -2150,10 +2221,7 @@ for art in arts:
 
 df
 
-# print(people)
-
 
 # TO DO:
 # "Former" leaders
-# Multiple quotes in a sentence
 # Test 25 random ones.
