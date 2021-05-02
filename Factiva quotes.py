@@ -10,9 +10,12 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\dontwork.xlsx')
+dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/articles_with_issues.pkl')
+dfa = dfa.reset_index(drop=False)
+dfa.rename(columns = {'index':'old index'}, inplace = True)
 
-# combine the lead paragraph and the body of the article
+
+#dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/Final4.pkl')
 
 t0 = time.time()
 
@@ -68,7 +71,9 @@ start = r'\"|\'\'|\`\`'
 end = r'\"|\'\''
 qs = r'\`\`|\"|\'\''
 suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
-analyst = r'analyst'
+analyst = r'analyst|negotiator|\baide\b|\bpilot\b|professor|' \
+     r'attorney|minister|secretary|\bguru\b|partner|general\s+counsel|mayor|dealer|board|administrator|owner|' \
+     r'leader|president'
 
 maxch = str(200)
 maxch1 = str(60)
@@ -514,15 +519,17 @@ z = 0
 # Start of articles
 #######################################################################################
 #######################################################################################
-#arts = range(221,228)
-#arts = [0]
-#for art in arts:
-for art in dfa.index:
+#arts = range(0,100)
+arts = [6]
+
+for art in arts:
+#for art in dfa.index:
     #try:
+        n = 1
+        h.n = 1
 
         t1 = time.time()
         text = str(dfa['LP'][art]) + ' ' + str(dfa['TD'][art])
-        #text = str(dfa['TD'][art])
         h.AN = AN = dfa["AN"][art]
         h.date = date = dfa["PD"][art]
         h.source = source = dfa["SN"][art]
@@ -591,6 +598,7 @@ for art in dfa.index:
         # Separate any words with multiple upper-case then lower case patterns (e.g., "MatrixOne" -> "Matrix One")
         text = re.sub(r"(\b[A-Z][a-z]+)([A-Z][a-z]+)", r"\1 \2", text)
 
+
         # Next remove any quotes around a single word (e.g., "great" or "Well,"). These also irratate the nlp program
         zy = []
         t = re.findall(r'(' + start + r')(\w+\w,?)(' + end + r')', text)
@@ -614,6 +622,17 @@ for art in dfa.index:
         for w in zy:
             text = re.sub(r'(' + w[0] + r')', w[1], text)
 
+        # Remove any commas before suffixes.
+        zy = []
+        t = re.findall(r',\s*' + suf + r'[^a-z]', text)
+        for w in t:
+            u = ''.join(''.join(elems) for elems in w)
+            y = re.sub(r',', '', u)
+            z = [u, y]
+            zy.append(z)
+        for w in zy:
+            text = re.sub(r'(' + w[0] + r')', w[1], text)
+
 
         ################################
         # Loading the text into the Stanza nlp system
@@ -627,9 +646,8 @@ for art in dfa.index:
         fulls = []
         lsts = []
 
+        ppl_inrow = []
 
-        n = 1
-        h.n = 1
         #Set the sentence count to 0
         s = 0
         #Create a count variable for each article that starts at 0 and +1 every time you add to the DF
@@ -638,7 +656,8 @@ for art in dfa.index:
         corgs = []
 
         # Create a sentence-level DFs
-        columns = ['no.', 'stence', 'filtered_sent', 'sentiment', 'orgs', 'corgs', 'ppl', 'prows', 'people', 'covered']
+        columns = ['no.', 'stence', 'filtered_sent', 'sentiment', 'orgs', 'corgs', 'ppl', 'prows', 'people',
+                   'sppl', 'covered']
         dfsent = pd.DataFrame(columns=columns)
 
         # Create a DF for people
@@ -810,7 +829,6 @@ for art in dfa.index:
 
                 h.stence = stence = sent.text
 
-
                 # Calculate the sentiment for each sentence
                 h.sentiment = sentiment = sent.sentiment
 
@@ -846,16 +864,17 @@ for art in dfa.index:
                             elif len(sfx) == 0:
                                 l = ent.text.split()[-1]
                                 lasts.append(l)
+
                     # Check if a last name was incorrectly marked as not a PERSON (e.g., an ORG)
                     # and if so, assign as PERSON
-                    else:
-                        if len(people) > 0:
-                            for per in people:
-                                last = per[0]
-                                last_said = re.findall('(' + last + r')', filtered_sent, re.IGNORECASE)
-                                last_in_sent = ''.join(''.join(elems) for elems in last_said)
-                                if len(last_in_sent) > 0:
-                                    ppl.append(last)
+                    if len(people) > 0:
+                        for per in people:
+                            last = per[0]
+                            last_said = re.findall('(' + last + r')', filtered_sent, re.IGNORECASE)
+                            last_in_sent = ''.join(''.join(elems) for elems in last_said)
+                            if len(last_in_sent) > 0:
+                                ppl.append(per[1])
+
                 # Next the products, to be used for the orgs
                 for ent in sent.ents:
                     if ent.type == "PRODUCT":
@@ -1172,8 +1191,9 @@ for art in dfa.index:
 
                         on = ''.join(''.join(elems) for elems in m)
 
-                        # If there is a role and org close together, then check if a single person in the next sentence:
-                        if len(on) > 0:
+                        # If there is a role and org close together, then check if a single person
+                        # in the next sentence:
+                        if len(on) > 0 and n<len(doc.sentences):
                             pz = []
                             j = doc.sentences[n]
                             b = j.text
@@ -1238,10 +1258,7 @@ for art in dfa.index:
                             person = "NOTNAMED"
                             last = role
                             people = make_row(last, person, role, firm, n, people)
-                            # Append the sppl with this recent addition won't be added below
-                            # because the person's last name is not in the focal sentence,
-                            # which is the condition to be added for all other instances.
-                            sppl.append(people[-1])
+
                         elif len(is_misc_role) == 0:
                             # if it's past the first row, Check if people listing that hasn't been
                             # placed in people yet
@@ -1306,15 +1323,15 @@ for art in dfa.index:
                 # Carry forward the prows column until replaced with next person
                 # In essence, prows tells you the most recent person in each sentence including the focal one.
                 if len(prows)==0 and len(dfsent.index)>0:
-                        prows = dfsent.loc[len(dfsent.index) - 1].at['prows']
+                    prows = dfsent.loc[len(dfsent.index) - 1].at['prows']
 
                 covered = None
 
-                dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent,sentiment, orgs, corgs, ppl, prows, people, covered]
+                dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent,sentiment, orgs, corgs, ppl, prows,
+                                                 people, sppl, covered]
 
                 n += 1
                 h.n += 1
-
 
             ############################################################################################
             ############################################################################################
@@ -1348,11 +1365,16 @@ for art in dfa.index:
                 # Deploy function to extract information from the sentence
                 info_extraction(stence, orgs)
 
-                most_recent_person = ""
-                next_person = ""
+                most_recent_person = []
+                next_person = []
+                # Sent variable to zero that there are at least one prows in dsent
+                # update below if not.
+                no_prows = 0
+                no_people = 0
                 # Establish the last person referenced (first filter later ones and then take the last one)
                 if len(prows)>0:
                     most_recent_person = prows[0]
+
 
 
                 # Establish next person referenced in case there isn't anyone in prows yet.
@@ -1364,6 +1386,17 @@ for art in dfa.index:
                         if len(next_prows) > 0:
                             next_person = next_prows[0]
                             break
+                    # If no prows in entire dsent, then create variable
+                    df_prows = dfsent[dfsent["prows"].str.len() != 0]
+                    if len(df_prows.index)==0:
+                        no_prows = 1
+
+
+
+                df_people = dfsent[dfsent["people"].str.len() != 0]
+                if len(df_people.index) == 0:
+                    no_people = 1
+
 
                 #Set variables for sentence to use later as needed
                 last_sindex = quote_set(stence)[0]
@@ -1411,7 +1444,7 @@ for art in dfa.index:
                             k = k1 + k2
                             k = ''.join(''.join(elems) for elems in k)
                             k = re.sub(r'(' + qs + r')', '', k)
-                            if len(k) > 0:
+                            if len(k) > 0 and no_prows == 0:
                                 h.last = person_set(most_recent_person, next_person)[0]
                                 h.person = person_set(most_recent_person, next_person)[1]
                                 h.role = person_set(most_recent_person, next_person)[2]
@@ -1588,7 +1621,7 @@ for art in dfa.index:
                                         l = n - int(m)
 
                                         # If person in the previous sentence, use that one
-                                        if l == 1:
+                                        if l == 1 and no_prows == 0:
                                             h.last = person_set(most_recent_person, next_person)[0]
                                             h.person = person_set(most_recent_person, next_person)[1]
                                             h.role = person_set(most_recent_person, next_person)[2]
@@ -1671,7 +1704,7 @@ for art in dfa.index:
                                 k = k1 + k2
                                 k = ''.join(''.join(elems) for elems in k)
                                 k = re.sub(r'(' + qs + r')', '', k)
-                                if len(k) > 0:
+                                if len(k) > 0 and no_prows == 0:
                                     h.quote = stence
                                     h.last = person_set(most_recent_person, next_person)[0]
                                     h.person = person_set(most_recent_person, next_person)[1]
@@ -1697,8 +1730,7 @@ for art in dfa.index:
                                         # If not end quote either, check if a title such as "The executive said..."
                                         role_list = rolesearch(stence)
                                         role_list = ''.join(''.join(elems) for elems in role_list)
-                                        if len(role_list) > 0:
-
+                                        if len(role_list) > 0 and no_prows == 0:
                                             h.quote = stence
                                             h.last = person_set(most_recent_person, next_person)[0]
                                             h.person = person_set(most_recent_person, next_person)[1]
@@ -1776,7 +1808,7 @@ for art in dfa.index:
                                     # So now it's just checking who said it.
                                     # First, check if person:
                                     if len (first_ppl) > 0:
-                                        if len(first_pron) == 0:
+                                        if len(first_pron) == 0 and no_prows == 0:
                                             for i in range(0, len(msent_quotes)):
 
                                                 h.quote = msent_quotes[i]
@@ -1795,7 +1827,7 @@ for art in dfa.index:
                                                 h.todf()
                                                 h.n = n
 
-                                        elif len(first_pron) > 0:
+                                        elif len(first_pron) > 0 and no_prows == 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
                                                 h.stence = stences[i]
@@ -1812,11 +1844,11 @@ for art in dfa.index:
 
 
                     # if said something and exactly one person from list, do stuff
-                    elif len(ppl) == 1:
+                    elif len(ppl) == 1 and len(prows)>0:
+
                         ##################################
                         # ONE AND ONLY ONE PEOPLE REFERENCE
                         ##################################
-
                         h.last = last = prows[0][0]
 
                         # Check for FULL quotes:
@@ -1922,7 +1954,7 @@ for art in dfa.index:
 
 
                     # If said equivalent but more than one person, do stuff:
-                    elif len(ppl) > 1:
+                    elif len(ppl) > 1 and len(prows)>0:
                         ##################################
                         # MORE THAN ONE PEOPLE REFERENCED
                         ##################################
@@ -2015,7 +2047,7 @@ for art in dfa.index:
                         x1 = re.sub(r'(' + qs + r')', '', x1)
                         # if so, must be from the most recent person referenced in the article
 
-                        if len(x1) > 0:
+                        if len(x1) > 0 and no_prows == 0:
                             h.last = person_set(most_recent_person, next_person)[0]
                             h.person = person_set(most_recent_person, next_person)[1]
                             h.role = person_set(most_recent_person, next_person)[2]
@@ -2054,7 +2086,7 @@ for art in dfa.index:
                                 if msent_quote is not None:
                                     if len(msent_quote) > 0:
                                         # Check if there's a person in that last sentence
-                                        if len(last_ppl) > 0:
+                                        if len(last_ppl) > 0 and no_people == 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
                                                 h.stence = stences[i]
@@ -2072,7 +2104,7 @@ for art in dfa.index:
                                                 h.n = n
                                                 dx += 1
 
-                                        elif len(last_ppl) == 0:
+                                        elif len(last_ppl) == 0 and no_prows == 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
                                                 h.stence = stences[i]
@@ -2094,7 +2126,7 @@ for art in dfa.index:
                     ##################################
                     # ONE OR MORE PEOPLE REFERENCED
                     ##################################
-                    elif len(ppl) > 0:
+                    elif len(ppl) > 0 and len(prows)>0:
                         # Since no said equivalent, but one or more people referenced,
                         # check for quotes because if quoted then the most recent person referenced should be the speaker and the person/people
                         # referenced in the sentence would either be inside a quote as in '"It was such a great year for Steve Jobs."')
@@ -2141,7 +2173,7 @@ for art in dfa.index:
                         elif len(x1) == 0:
                             # Check if multi-sentence
                             if msent_quote is not None:
-                                if len(msent_quote) > 0:
+                                if len(msent_quote) > 0 and no_prows == 0:
                                     for i in range(0, len(msent_quotes)):
                                         h.quote = msent_quotes[i]
                                         h.stence = stences[i]
