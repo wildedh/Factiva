@@ -10,7 +10,7 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final4.xlsx')
+dfa = pd.read_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\dontwork.xlsx')
 
 # combine the lead paragraph and the body of the article
 
@@ -68,7 +68,7 @@ start = r'\"|\'\'|\`\`'
 end = r'\"|\'\''
 qs = r'\`\`|\"|\'\''
 suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
-
+analyst = r'analyst'
 
 maxch = str(200)
 maxch1 = str(60)
@@ -496,6 +496,16 @@ def make_row(last, person, role, firm, n, people):
             people = [list(x) for x in set(tuple(x) for x in people)]
     return people
 
+def person_name(person):
+    last = ""
+    sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
+    if len(sfx) > 0:
+        last = person.split()[-2]
+    elif len(sfx) == 0:
+        last = person.split()[-1]
+    return person, last
+
+
 z = 0
 
 
@@ -505,9 +515,9 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(221,228)
-arts = [205]
-for art in arts:
-#for art in dfa.index:
+#arts = [0]
+#for art in arts:
+for art in dfa.index:
     #try:
 
         t1 = time.time()
@@ -676,13 +686,8 @@ for art in arts:
                         a = re.sub(',\s+(INC|LLC)', '', a, re.IGNORECASE)
                         p = a.split(',')
 
-                        person = p[0]
-                        # Figure out the last name depending on if there's a suffix
-                        sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                        if len(sfx) > 0:
-                            last = person.split()[-2]
-                        elif len(sfx) == 0:
-                            last = person.split()[-1]
+                        person = p[0].title()
+                        last = person_name(person)[1].title()
                         firm1 = p[-1]
                         # Lastly, if there are four pieces the role is the 2nd and 3rd pieces so combine
                         if len(p) ==5:
@@ -696,10 +701,10 @@ for art in arts:
                         role_check = rolesearch(role1)
                         if len(role_check)==0:
                             role = firm1
-                            firm = role1
+                            firm = role1.title()
                         elif len(role_check)>0:
                             role = role1
-                            firm = firm1
+                            firm = firm1.title()
 
                         row = [last, person, role, firm, n]
 
@@ -719,7 +724,7 @@ for art in arts:
 
                     elif len(g) == 0:
                         m = []
-                        # check if person in people list talking
+                        # Check if previously-introduced person is talking
                         for per in people:
                             last = per[0]
                             last_string = re.findall(r'' + last + r':', stence, re.IGNORECASE)
@@ -825,6 +830,7 @@ for art in arts:
                 filtered_sent = re.sub(r'^.+(' + end + r')\s+', ' ', filtered_sent)
 
 
+
                 # Check if you can add to dataset of people/firm/role
                 # First, compile a list of people and organizations and products iteratively within the sentence.
                 # You use products list in the orgs list so need to run them sep.
@@ -864,7 +870,7 @@ for art in arts:
                     if ent.type == "ORG":
                         tion = ent.text
                         # remove odd punctuation such as ")" that can mess up the regex down the line
-                        tion = re.sub(r'[()-]', '', tion)
+                        tion = re.sub(r'[()]', '', tion)
                         z = re.findall(r'' + tion + r'', filtered_sent)
                         if len(z) > 0:
                             # don't include acronyms
@@ -914,7 +920,6 @@ for art in arts:
                             else:
                                 role_list = shortrolesearch(filtered_sent, per, mxld)
 
-
                         # Then by definition, must be >1 people
                         else:
                             role_list = shortrolesearch(filtered_sent, per, mxlds)
@@ -927,15 +932,8 @@ for art in arts:
 
                                 org = orgs[0]
                                 firm = org.replace(r"'s", "")
-
-                                # If yes, add as potential person
                                 person = per
-                                sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                if len(sfx) > 0:
-                                    last = person.split()[-2]
-                                elif len(sfx) == 0:
-                                    last = person.split()[-1]
-
+                                last = person_name(person)[1]
                                 role = role_set(role_list, per)
 
                             # Multiple orgs in sentence
@@ -1043,14 +1041,8 @@ for art in arts:
 
                                             if len(os) > 0:
                                                 person = per
-                                                sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                                if len(sfx) > 0:
-                                                    last = person.split()[-2]
-                                                elif len(sfx) == 0:
-                                                    last = person.split()[-1]
-
+                                                last = person_name(person)[1]
                                                 role = role_set(os, o)
-
                                                 o = o.replace(r"'s", "")
                                                 firm = o
 
@@ -1068,15 +1060,8 @@ for art in arts:
                                             # If whose then title, assign
                                             if len(m) > 0:
                                                 person = per
-                                                sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                                if len(sfx) > 0:
-                                                    last = person.split()[-2]
-                                                elif len(sfx) == 0:
-                                                    last = person.split()[-1]
-
-
+                                                last = person_name(person)[1]
                                                 role = role_set(m, o)
-
                                                 firm = o
                                                 c += 1
                                                 q += 1
@@ -1091,16 +1076,9 @@ for art in arts:
 
                                                 #If so, assign
                                                 if len(j) > 0:
-
                                                     person = per
-                                                    sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                                    if len(sfx) > 0:
-                                                        last = person.split()[-2]
-                                                    elif len(sfx) == 0:
-                                                        last = person.split()[-1]
-
+                                                    last = person_name(person)[1]
                                                     role = m[0][0]
-
                                                     firm = o
                                                     c += 1
                                                     q += 1
@@ -1124,12 +1102,7 @@ for art in arts:
                                                         # If name and person are close to title, assign
                                                         if len(ol) > 0:
                                                             person = per
-                                                            sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                                            if len(sfx) > 0:
-                                                                last = person.split()[-2]
-                                                            elif len(sfx) == 0:
-                                                                last = person.split()[-1]
-
+                                                            last = person_name(person)[1]
                                                             role = role_set(m, per)
 
                                                             firm = o
@@ -1154,22 +1127,24 @@ for art in arts:
                                     role = re.sub(r'' + op + r'', '', xl[0])
                                     firm = re.sub(r'' + role + r'', '', xl[0])
                                     person = per
-                                    sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                    if len(sfx) > 0:
-                                        last = person.split()[-2]
-                                    elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                    last = person_name(person)[1]
 
-                            # If there's a titled person with no org, it may be the org in previous reference
-                            # If a repeat person, this will be filtered out below.
+
                             elif len(orgs) == 0:
+                                # Check if an analyst from an unnamed firm
+                                analyst_search = re.findall(r'(' + analyst + r')', filtered_sent, re.IGNORECASE)
+                                if len(analyst_search)>0:
+                                    person = per
+                                    last = person_name(person)[1]
+                                    role = role_set(role_list, per)
+                                    firm = "NOTNAMED"
+
+                                # If there's a titled person with no org, it may be the org in previous reference
+                                # If a repeat person, this will be filtered out below.
+                                # If not org in previous sentence, this will also be dropped:
                                 if len(dfsent) > 0:
                                     person = per
-                                    sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                    if len(sfx) > 0:
-                                        last = person.split()[-2]
-                                    elif len(sfx) == 0:
-                                        last = person.split()[-1]
+                                    last = person_name(person)[1]
                                     role = role_set(role_list, per)
                                     firms = dfsent.iloc[n-2]['orgs']
                                     if len(firms) == 1:
@@ -1186,11 +1161,7 @@ for art in arts:
                                             firm = org
                                             role = "NA"
                                             person = per
-                                            sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
-                                            if len(sfx) > 0:
-                                                last = person.split()[-2]
-                                            elif len(sfx) == 0:
-                                                last = person.split()[-1]
+                                            last = person_name(person)[1]
 
                         people = make_row(last, person, role, firm, n, people)
 
@@ -1243,9 +1214,8 @@ for art in arts:
                                 firm = o
                                 # Add the role by iteratively going through the hierarchy of titles
                                 role = role_set(m, firm)
-
                                 people = make_row(last, person, role, firm, n, people)
-                                # In order to include this person in teh sppl list, need to add it
+                                # In order to include this person in the sppl list, need to add it
                                 # right here. It won't be added below
                                 # because the person's last name is not in the focal sentence,
                                 # which is the condition to be added for all other instances.
@@ -1272,7 +1242,7 @@ for art in arts:
                             # because the person's last name is not in the focal sentence,
                             # which is the condition to be added for all other instances.
                             sppl.append(people[-1])
-                        if len(is_misc_role) == 0:
+                        elif len(is_misc_role) == 0:
                             # if it's past the first row, Check if people listing that hasn't been
                             # placed in people yet
                             if n>1:
@@ -1341,7 +1311,6 @@ for art in arts:
                 covered = None
 
                 dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent,sentiment, orgs, corgs, ppl, prows, people, covered]
-
 
                 n += 1
                 h.n += 1
@@ -2225,3 +2194,4 @@ df
 # TO DO:
 # "Former" leaders
 # Test 25 random ones.
+# Headlines types of articles 232
