@@ -7,15 +7,16 @@ import stanza
 import openpyxl
 import re
 
+
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/filtered_750.pkl')
-dfa = dfa.reset_index(drop=False)
-dfa.rename(columns = {'index':'old index'}, inplace = True)
+#dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/filtered_750.pkl')
+#dfa = dfa.reset_index(drop=False)
+#dfa.rename(columns = {'index':'old index'}, inplace = True)
 
 
-#dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/Final4.pkl')
+dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_04_raw.xlsx')
 
 t0 = time.time()
 
@@ -510,6 +511,15 @@ def person_name(person):
         last = person.split()[-1]
     return person, last
 
+def flatten(ugly_list_of_lists):
+    result = []
+    for el in ugly_list_of_lists:
+        if hasattr(el, "__iter__") and not isinstance(el, str):
+            result.extend(flatten(el))
+        else:
+            result.append(el)
+    return result
+
 
 z = 0
 
@@ -520,16 +530,16 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(0,100)
-#arts = [6]
+arts = [6]
 
-#for art in arts:
-for art in dfa.index:
+for art in arts:
+#for art in dfa.index:
     #try:
         n = 1
         h.n = 1
 
         t1 = time.time()
-        text = str(dfa['LP'][art]) + ' ' + str(dfa['TD'][art])
+        text = str(dfa['LP'][art]) + '' + str(dfa['TD'][art])
         h.AN = AN = dfa["AN"][art]
         h.date = date = dfa["PD"][art]
         h.source = source = dfa["SN"][art]
@@ -557,7 +567,8 @@ for art in dfa.index:
         d2b = re.findall(r'^.{0,' + maxch + r'}/\b.+\b/\s*-', text, re.IGNORECASE)
         d3a = re.findall(r'^.{0,' + maxch + r'}\d\d*\s*--', text, re.IGNORECASE)
         d3b = re.findall(r'^.{0,' + maxch + r'}\d\d*\s-', text, re.IGNORECASE)
-        d3c = re.findall(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', text, re.IGNORECASE)
+        d3c = re.findall(r'^.{0,' + maxch + r'}\d\d*,\s\w+\s*-', text, re.IGNORECASE)
+        d3d = re.findall(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', text, re.IGNORECASE)
 
         # Iteratively go through these instances. Only do one because could potentially
         # over cut if run on more than one.
@@ -584,6 +595,9 @@ for art in dfa.index:
             text = re.sub(r'^.{0,' + maxch + r'}\d\d*\s-', '', text)
 
         elif len(d3c) > 0:
+            text = re.sub(r'^.{0,' + maxch + r'}\d\d*,\s\w+\s*-', '', text)
+
+        elif len(d3d) > 0:
             text = re.sub(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', '', text)
 
 
@@ -955,6 +969,7 @@ for art in dfa.index:
                                 last = person_name(person)[1]
                                 role = role_set(role_list, per)
 
+
                             # Multiple orgs in sentence
                             elif len(orgs) > 1:
 
@@ -979,6 +994,10 @@ for art in dfa.index:
                                         li.append(o)
                                         gp.append(li)
                                         gp = gp[0]
+                                # In the case of multiple substrings of orgs (e.g., Honda and Honda US,
+                                # and Toyota and Toyota Europe), the gh list of lists can get really ugly and cause
+                                # problems. So you need to 'flatten' the list so each element is at level 1.
+                                gh = flatten(gh)
 
                                 gm = ''.join(''.join(elems) for elems in gh)
 
