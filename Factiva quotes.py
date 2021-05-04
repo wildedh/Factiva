@@ -10,7 +10,7 @@ import re
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/articles_with_issues.pkl')
+dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/filtered_750.pkl')
 dfa = dfa.reset_index(drop=False)
 dfa.rename(columns = {'index':'old index'}, inplace = True)
 
@@ -520,10 +520,10 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(0,100)
-arts = [6]
+#arts = [6]
 
-for art in arts:
-#for art in dfa.index:
+#for art in arts:
+for art in dfa.index:
     #try:
         n = 1
         h.n = 1
