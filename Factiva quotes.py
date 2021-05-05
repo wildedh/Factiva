@@ -16,7 +16,9 @@ nlp = stanza.Pipeline('en')
 #dfa.rename(columns = {'index':'old index'}, inplace = True)
 
 
-dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_04_raw.xlsx')
+dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/final4.xlsx')
+#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_04_raw3.xlsx')
+
 
 t0 = time.time()
 
@@ -31,8 +33,9 @@ t0 = time.time()
 # get the article slice
 #dfa = pd.read_pickle(INFILE)[int(STARTROW): int(ENDROW)]
 
-columns = ['sent', 'firm', 'person', 'last', 'role',  'quote',  'qtype', 'qsaid', 'qpref', 'comment', 'AN', 'date',
-           'source', 'regions', 'subjects', 'misc', 'industries', 'focfirm', 'by', 'comp', 'sentiment', 'sentence']
+columns = ['sent', 'firm', 'person', 'last', 'role',  'former', 'quote',  'qtype', 'qsaid',
+           'qpref', 'comment', 'AN', 'date', 'source', 'regions', 'subjects', 'misc',
+           'industries', 'focfirm', 'by', 'comp', 'sentiment', 'sentence']
 
 df = pd.DataFrame(columns=columns)
 
@@ -86,19 +89,19 @@ mxorg = 6
 mxlds = 2
 mxpron = 2
 mxorg1 = 2
-
+mxfrmer = 2
 
 # Create a class in which to place variables and then create a function that will place all the variables
 # in a df row. Makes the code a bit more readable when you go through the todf function doezens of times
 class Features:
     def __init__(self):
         self.df = self.qtype = self.qsaid = self.qpref = self.comment = self.n= self.person = \
-        self.last = self.role = self.firm = self.quote = self.AN = self.date = self.source = \
+        self.last = self.role = self.firm = self.former = self.quote = self.AN = self.date = self.source = \
         self.regions = self.subjects = self.misc = self.industries = self.focfirm = self.by = \
         self.comp = self.sentiment = self.stence = None
 
     def todf(self):
-        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role,  self.quote, self.qtype,
+        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role,  self.former, self.quote, self.qtype,
                                            self.qsaid, self.qpref, self.comment, self.AN, self.date, self.source,
                                            self.regions, self.subjects, self.misc, self.industries, self.focfirm,
                                            self.by, self.comp, self.sentiment, self.stence]
@@ -106,7 +109,7 @@ class Features:
         dfsent.at[n - 1, 'covered'] = 1
 
     def todf_info(self):
-        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role,  self.quote, self.qtype,
+        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role, self.former, self.quote, self.qtype,
                                            self.qsaid, self.qpref, self.comment, self.AN, self.date, self.source,
                                            self.regions, self.subjects, self.misc, self.industries, self.focfirm,
                                            self.by, self.comp, self.sentiment, self.stence]
@@ -379,6 +382,11 @@ def ofrolesearch(sentence, non_role_var, max_char):
     org_find = z1 + z2 + z3 + z4 + z5
     return org_find
 
+
+
+
+
+
 def threerolesearch(sentence, non_role_var1, non_role_var2):
     c1 = re.findall(r'' + non_role_var1 + r'.+(' + l1 + r').+(' + non_role_var2 + r')', sentence,
                     re.IGNORECASE)
@@ -422,6 +430,7 @@ def info_extraction(stence, orgs):
         h.last = "NA"
         h.firm = orgs[0]
         h.role = "NA"
+        h.former = "NA"
         h.qtype = "information"
         h.qsaid = "NA"
         h.qpref = "NA"
@@ -436,6 +445,7 @@ def info_extraction(stence, orgs):
             h.last = "NA"
             h.firm = o
             h.role = "NA"
+            h.former = "NA"
             h.qtype = "information"
             h.qsaid = "NA"
             h.qpref = "NA"
@@ -453,6 +463,7 @@ def info_extraction(stence, orgs):
             h.last = per['last']
             h.firm = per['firm']
             h.role = per['role']
+            h.former = per['former']
             h.qtype = "information"
             h.qsaid = "NA"
             h.qpref = "NA"
@@ -472,25 +483,34 @@ def role_set(role_list, var_to_strip):
     return role
 
 
-
 def person_set(most_recent_person,next_person):
     if len(most_recent_person)>0:
         last = most_recent_person[0]
         person = most_recent_person[1]
         role = most_recent_person[2]
         firm = most_recent_person[3]
+        former = most_recent_person[4]
     else:
         last = next_person[0]
         person = next_person[1]
         role = next_person[2]
         firm = next_person[3]
-    return last, person, role, firm
+        former = next_person[4]
+    return last, person, role, firm, former
+
+
+def former_search(sentence,role):
+    former_role = 0
+    former = re.findall(r'\b(?:(former\s+)\W+(?:\w+\W+){0,' + str(mxfrmer) + r'}?(' + role + r'))',sentence, re.IGNORECASE)
+    if len(former)>0:
+        former_role = 1
+    return former_role
 
 
 
-def make_row(last, person, role, firm, n, people):
+def make_row(last, person, role, firm, former, n, people):
     # Combine last name, person, firm, and role, for that person.
-    row = [last, person, role, firm, n]
+    row = [last, person, role, firm, former, n]
     # If something in each key varable then add to the dataset of people
     if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
         # Filter out people who already were added to the list
@@ -529,7 +549,7 @@ z = 0
 # Start of articles
 #######################################################################################
 #######################################################################################
-#arts = range(0,100)
+#arts = range(54,85)
 arts = [6]
 
 for art in arts:
@@ -539,7 +559,7 @@ for art in arts:
         h.n = 1
 
         t1 = time.time()
-        text = str(dfa['LP'][art]) + '' + str(dfa['TD'][art])
+        text = str(dfa['LP'][art]) + ' ' + str(dfa['TD'][art])
         h.AN = AN = dfa["AN"][art]
         h.date = date = dfa["PD"][art]
         h.source = source = dfa["SN"][art]
@@ -568,7 +588,10 @@ for art in arts:
         d3a = re.findall(r'^.{0,' + maxch + r'}\d\d*\s*--', text, re.IGNORECASE)
         d3b = re.findall(r'^.{0,' + maxch + r'}\d\d*\s-', text, re.IGNORECASE)
         d3c = re.findall(r'^.{0,' + maxch + r'}\d\d*,\s\w+\s*-', text, re.IGNORECASE)
-        d3d = re.findall(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', text, re.IGNORECASE)
+        d3d = re.findall(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b\s*--', text, re.IGNORECASE)
+
+        #print("d1", d1, "d1a", d1a,  "d1b", d1b, "d2a", d2a, "d2b", d2b,
+        #      "d3a", d3a, "d3b", d3b, "d3c", d3c, "d3d", d3d)
 
         # Iteratively go through these instances. Only do one because could potentially
         # over cut if run on more than one.
@@ -602,6 +625,8 @@ for art in arts:
 
 
 
+
+
         # Next, remove any instance of a set of non-white-space characters 1-letter parentheses (e.g., "(D)"). These mess up the NLP process as they mean something literally
         # in the PyTorch code.
         text = re.sub(r'\(\S+\)', '', text)
@@ -611,6 +636,12 @@ for art in arts:
         text = re.sub(r'\*', r'.', text)
         # Separate any words with multiple upper-case then lower case patterns (e.g., "MatrixOne" -> "Matrix One")
         text = re.sub(r"(\b[A-Z][a-z]+)([A-Z][a-z]+)", r"\1 \2", text)
+        # Remove any words with backslashes in them. There are some articles with these for tagging purposes
+        text = re.sub(r'[\\+]', '_', text)
+        # Remove suffixes
+        #text = re.sub(r'' + suf + r'', '', text)
+
+
 
 
         # Next remove any quotes around a single word (e.g., "great" or "Well,"). These also irratate the nlp program
@@ -675,7 +706,7 @@ for art in arts:
         dfsent = pd.DataFrame(columns=columns)
 
         # Create a DF for people
-        columns = ['first_sent', 'last','full','role','firm']
+        columns = ['first_sent', 'last', 'full', 'role', 'firm', 'former']
         dfpeople = pd.DataFrame(columns=columns)
 
         # Look through document and see if has instances of at least four all-cap words
@@ -710,6 +741,9 @@ for art in arts:
                     person = ""
                     firm = ""
                     firm1 = ""
+                    # In these conference calls, only current roles speak.
+                    # Plus, it wouldn't say "FORMER CEO..." anyway
+                    former = 0
                     # Check if name title in the sentence:
                     g = re.findall(r'(((\b[A-Z]+\b\W*){4,}):)', stence)
                     if len(g) > 0:
@@ -735,11 +769,13 @@ for art in arts:
                         if len(role_check)==0:
                             role = firm1
                             firm = role1.title()
+
                         elif len(role_check)>0:
                             role = role1
                             firm = firm1.title()
 
-                        row = [last, person, role, firm, n]
+
+                        row = [last, person, role, firm, former, n]
 
                         # If something in each key varable then add to the dataset of people
                         if min(len(row[0]), len(row[1]), len(row[2]), len(row[3])) > 0:
@@ -774,6 +810,7 @@ for art in arts:
                                     h.person = per[1]
                                     h.role = per[2]
                                     h.firm = per[3]
+                                    h.former = per[4]
                                     h.qtype = "Transcript"
                                     h.qsaid = "yes"
                                     h.qpref = "yes"
@@ -795,7 +832,7 @@ for art in arts:
                                 h.person = sppl[-1][1]
                                 h.role = sppl[-1][2]
                                 h.firm = sppl[-1][3]
-
+                                h.former = sppl[-1][4]
                                 h.qtype = "Transcript"
                                 h.qsaid = "yes"
                                 h.qpref = "yes"
@@ -823,6 +860,7 @@ for art in arts:
                 person = ""
                 firm = ""
                 role = ""
+                former = ""
                 qtype = ""
                 qsaid = ""
                 qpref = ""
@@ -842,6 +880,7 @@ for art in arts:
                 fprod = []
 
                 h.stence = stence = sent.text
+
 
                 # Calculate the sentiment for each sentence
                 h.sentiment = sentiment = sent.sentiment
@@ -904,6 +943,7 @@ for art in arts:
                         tion = ent.text
                         # remove odd punctuation such as ")" that can mess up the regex down the line
                         tion = re.sub(r'[()]', '', tion)
+
                         z = re.findall(r'' + tion + r'', filtered_sent)
                         if len(z) > 0:
                             # don't include acronyms
@@ -942,20 +982,24 @@ for art in arts:
                         person = ""
                         firm = ""
                         role = ""
-
+                        former = ""
                         if len(ppl) == 1:
                             # If exactly 1 org, not matter where the person is in proximity of title/role
                             if len(orgs) == 1:
-                                role_list = longrolesearch(filtered_sent, per)
-
-
+                                role_count = rolesearch(filtered_sent)
+                                if len(role_count)>1:
+                                    role_list = shortrolesearch(filtered_sent, per, mxld)
+                                else:
+                                    role_list = longrolesearch(filtered_sent, per)
                             # If either 0 or >1 orgs, check if person and title are close
                             else:
                                 role_list = shortrolesearch(filtered_sent, per, mxld)
 
+
                         # Then by definition, must be >1 people
                         else:
                             role_list = shortrolesearch(filtered_sent, per, mxlds)
+
 
                         # If the title is mentioned, move to next step
                         if len(role_list) > 0:
@@ -968,7 +1012,7 @@ for art in arts:
                                 person = per
                                 last = person_name(person)[1]
                                 role = role_set(role_list, per)
-
+                                former = former_search(filtered_sent, role)
 
                             # Multiple orgs in sentence
                             elif len(orgs) > 1:
@@ -989,17 +1033,24 @@ for art in arts:
 
                                     li = [match for match in or1 if o in match]
                                     gh.append(li)
-                                    # If there is substring occurance, create a list with all firms with that substring
+                                    # If there is substring occurance, create a list with all firms
+                                    # with that substring
+
                                     if len(li) > 0:
                                         li.append(o)
+                                        # If gp not a list, then turn it into a list
+                                        gp = [gp] if isinstance(gp, str) else gp
                                         gp.append(li)
                                         gp = gp[0]
+
                                 # In the case of multiple substrings of orgs (e.g., Honda and Honda US,
                                 # and Toyota and Toyota Europe), the gh list of lists can get really ugly and cause
                                 # problems. So you need to 'flatten' the list so each element is at level 1.
                                 gh = flatten(gh)
 
                                 gm = ''.join(''.join(elems) for elems in gh)
+
+
 
                                 repeat_orgs = []
                                 repeat_count = 0
@@ -1073,8 +1124,10 @@ for art in arts:
                                         og = o1 + o2
 
                                         if len(og) > 0:
-
-                                            os = shortrolesearch(filtered_sent, o, mxorg1)
+                                            if len(ppl)==1:
+                                                os = longrolesearch(filtered_sent, o)
+                                            else:
+                                                os = shortrolesearch(filtered_sent, o, mxorg1)
                                             om = ''.join(''.join(elems) for elems in os)
 
                                             if len(os) > 0:
@@ -1083,6 +1136,7 @@ for art in arts:
                                                 role = role_set(os, o)
                                                 o = o.replace(r"'s", "")
                                                 firm = o
+                                                former = former_search(filtered_sent, role)
 
                                                 c += 1
                                                 q += 1
@@ -1101,6 +1155,7 @@ for art in arts:
                                                 last = person_name(person)[1]
                                                 role = role_set(m, o)
                                                 firm = o
+                                                former = former_search(filtered_sent, role)
                                                 c += 1
                                                 q += 1
                                                 if len(gm) == 0:
@@ -1118,51 +1173,67 @@ for art in arts:
                                                     last = person_name(person)[1]
                                                     role = m[0][0]
                                                     firm = o
+                                                    former = former_search(filtered_sent, role)
                                                     c += 1
                                                     q += 1
                                                     if len(gm) == 0:
                                                         break
-
-
-                                                # If not any of these three strong matches ('s, of, whose),
-                                                # check on a weaker match: if name are close to title
+                                                # If only one person and the only multiple companies are
+                                                # part of each other, just pick the first one mentioned.
                                                 elif len(j) == 0:
+                                                    if len(ppl) == 1 and repeat_count+1 == len(orgs):
+                                                        os = longrolesearch(filtered_sent, o)
+                                                        person = per
+                                                        last = person_name(person)[1]
+                                                        role = role_set(os, o)
+                                                        firm = o
+                                                        former = former_search(filtered_sent, role)
 
-                                                    m = shortrolesearch(filtered_sent, o, mxorg1)
-                                                    on = ''.join(''.join(elems) for elems in m)
-
-                                                    # If so, check if person is also near the title
-                                                    if len(on) > 0:
-                                                        m = shortrolesearch(filtered_sent, per, mxorg1)
-                                                        ol = ''.join(''.join(elems) for elems in m)
+                                                        c += 1
+                                                        q += 1
+                                                        if len(gm) == 0:
+                                                            break
 
 
-                                                        # If name and person are close to title, assign
-                                                        if len(ol) > 0:
-                                                            person = per
-                                                            last = person_name(person)[1]
-                                                            role = role_set(m, per)
+                                                    # If not any of these three strong matches ('s, of, whose),
+                                                    # check on a weaker match: if name are close to title
+                                                    else:
 
-                                                            firm = o
-                                                            c += 1
-                                                            if len(gm) == 0:
-                                                                break
-                                                    # If not, check if name followed by just one org and a title.
-                                                    elif len(on) == 0:
-                                                        m = threerolesearch(filtered_sent, per, o)
+                                                        m = shortrolesearch(filtered_sent, o, mxorg1)
+                                                        on = ''.join(''.join(elems) for elems in m)
 
-                                                        if len(m) > 0:
-                                                            for i in m:
-                                                                j = ''.join(''.join(elems) for elems in i)
-                                                                if len(j) > 0:
-                                                                    xl.append(j)
-                                                                    op = o
-                                                            c += 1
-                                                            if len(gm) == 0:
-                                                                break
+                                                        # If so, check if person is also near the title
+                                                        if len(on) > 0:
+                                                            m = shortrolesearch(filtered_sent, per, mxorg1)
+                                                            ol = ''.join(''.join(elems) for elems in m)
+
+                                                            # If name and person are close to title, assign
+                                                            if len(ol) > 0:
+                                                                person = per
+                                                                last = person_name(person)[1]
+                                                                role = role_set(m, per)
+                                                                former = former_search(filtered_sent, role)
+                                                                firm = o
+                                                                c += 1
+                                                                if len(gm) == 0:
+                                                                    break
+                                                        # If not, check if name followed by just one org and a title.
+                                                        elif len(on) == 0:
+                                                            m = threerolesearch(filtered_sent, per, o)
+
+                                                            if len(m) > 0:
+                                                                for i in m:
+                                                                    j = ''.join(''.join(elems) for elems in i)
+                                                                    if len(j) > 0:
+                                                                        xl.append(j)
+                                                                        op = o
+                                                                c += 1
+                                                                if len(gm) == 0:
+                                                                    break
 
                                 if len(xl) == 1:
                                     role = re.sub(r'' + op + r'', '', xl[0])
+                                    former = former_search(filtered_sent, role)
                                     firm = re.sub(r'' + role + r'', '', xl[0])
                                     person = per
                                     last = person_name(person)[1]
@@ -1175,6 +1246,7 @@ for art in arts:
                                     person = per
                                     last = person_name(person)[1]
                                     role = role_set(role_list, per)
+                                    former = former_search(filtered_sent, role)
                                     firm = "NOTNAMED"
 
                                 # If there's a titled person with no org, it may be the org in previous reference
@@ -1184,6 +1256,7 @@ for art in arts:
                                     person = per
                                     last = person_name(person)[1]
                                     role = role_set(role_list, per)
+                                    former = former_search(filtered_sent, role)
                                     firms = dfsent.iloc[n-2]['orgs']
                                     if len(firms) == 1:
                                         firm = firms[0]
@@ -1198,10 +1271,11 @@ for art in arts:
                                         if len(q) > 0:
                                             firm = org
                                             role = "NA"
+                                            former = "NA"
                                             person = per
                                             last = person_name(person)[1]
 
-                        people = make_row(last, person, role, firm, n, people)
+                        people = make_row(last, person, role, firm, former, n, people)
 
                 elif len(ppl) == 0:
                     if len(orgs) == 1:
@@ -1229,6 +1303,7 @@ for art in arts:
                             # the end quote would have a space after the quote
                             sty4 = re.sub(r'^.+(' + end + r')\s+', ' ', sty3)
 
+
                             # Check if there are any people in the non-quote portion of the sentence:
                             for ent in j.ents:
                                 if ent.type == "PERSON":
@@ -1253,7 +1328,8 @@ for art in arts:
                                 firm = o
                                 # Add the role by iteratively going through the hierarchy of titles
                                 role = role_set(m, firm)
-                                people = make_row(last, person, role, firm, n, people)
+                                former = former_search(filtered_sent, role)
+                                people = make_row(last, person, role, firm, former, n, people)
                                 # In order to include this person in the sppl list, need to add it
                                 # right here. It won't be added below
                                 # because the person's last name is not in the focal sentence,
@@ -1265,6 +1341,7 @@ for art in arts:
                         # For the situation in which a role is named but no name or affiliation such as when
                         # an "analyst" does not want to be named, we still need to capture them
                         role = role_set(rolesearch(filtered_sent), '')
+                        former = former_search(filtered_sent, role)
                         k1 = re.findall(
                             r'(' + role + r')\W+(?:\w+\W+){0,' + str(mxpron) + r'}?(' + unnamed + r')',
                             filtered_sent, re.IGNORECASE)
@@ -1276,7 +1353,7 @@ for art in arts:
                             firm = "NOTNAMED"
                             person = "NOTNAMED"
                             last = role
-                            people = make_row(last, person, role, firm, n, people)
+                            people = make_row(last, person, role, firm, former, n, people)
 
                         elif len(is_misc_role) == 0:
                             # if it's past the first row, Check if people listing that hasn't been
@@ -1305,11 +1382,12 @@ for art in arts:
                                                 continue
                                             else:
                                                 role = role_set(rolesearch(filtered_sent), '')
+                                                former = former_search(filtered_sent, role)
                                                 if len(role)>0:
                                                     firm = "NOTNAMED"
                                                     person = unassigned_person
                                                     last = unassigned_last
-                                                    people = make_row(last, person, role, firm, n, people)
+                                                    people = make_row(last, person, role, firm, former, n, people)
                                                     break
 
 
@@ -1324,9 +1402,9 @@ for art in arts:
                         last = per[0]
                         m = re.findall(r'\b' + last + r'\b', filtered_sent, re.IGNORECASE)
                         if len(m) > 0:
-                            prow = [per[0], per[1], per[2], per[3], n]
+                            prow = [per[0], per[1], per[2], per[3], per[4], n]
                             prows.append(prow)
-                            dfpeople.loc[len(dfpeople.index)] = [n, per[0], per[1], per[2], per[3]]
+                            dfpeople.loc[len(dfpeople.index)] = [n, per[0], per[1], per[2], per[3], per[4]]
                             dfpeople = dfpeople.drop_duplicates(subset=['last', 'full'], keep='first')\
                                 .reset_index(drop=True)
 
@@ -1336,7 +1414,7 @@ for art in arts:
                 for per in people:
                     y = re.findall(r'\b' + per[0] + r'\b', filtered_sent, re.IGNORECASE)
                     if len(y) > 0:
-                        per[4] = n
+                        per[5] = n
                         sppl.append(per)
 
                 # Carry forward the prows column until replaced with next person
@@ -1372,6 +1450,7 @@ for art in arts:
                 ppl = dfsent["ppl"][se]
                 prows = dfsent["prows"][se]
                 people = dfsent["people"][se]
+
 
 
                 if dfsent["covered"][se] == 1:
@@ -1468,6 +1547,7 @@ for art in arts:
                                 h.person = person_set(most_recent_person, next_person)[1]
                                 h.role = person_set(most_recent_person, next_person)[2]
                                 h.firm = person_set(most_recent_person, next_person)[3]
+                                h.former = person_set(most_recent_person, next_person)[4]
                                 h.qsaid = "yes"
                                 h.qpref = "no"
                                 h.comment = "pronoun"
@@ -1504,6 +1584,7 @@ for art in arts:
                                         h.person = "NA"
                                         h.firm = org
                                         h.role = re.sub(r'' + org + '', '', k)
+                                        h.former = former_search(filtered_sent, h.role)
                                         h.qsaid = "yes"
                                         h.qpref = "no"
                                         h.comment = "Org representative"
@@ -1527,6 +1608,7 @@ for art in arts:
                                         h.person = "NA"
                                         h.firm = org
                                         h.role = "NA"
+                                        h.former = "NA"
                                         h.qsaid = "yes"
                                         h.qpref = "no"
                                         h.comment = "from org, nondiscriptives"
@@ -1564,6 +1646,7 @@ for art in arts:
                                             h.person = "NA"
                                             h.firm = org
                                             h.role = re.sub(r'' + org + '', '', k)
+                                            h.former = former_search(filtered_sent, h.role)
                                             h.qsaid = "yes"
                                             h.qpref = "no"
                                             h.comment = "Org representative"
@@ -1588,6 +1671,7 @@ for art in arts:
                                             h.person = "NA"
                                             h.firm = ''.join(''.join(elems) for elems in orgs)
                                             h.role = "NA"
+                                            h.former = "NA"
                                             h.qtype = "Information - non-discript single sentence quote"
                                             h.qsaid = "yes"
                                             h.qpref = "no"
@@ -1635,16 +1719,19 @@ for art in arts:
                                         # First, check when the last person reference was
                                         # The second items, the item in the person list, must be last because
                                         # sppl has n ongoing
-                                        m = int(sppl[-1][-1])
-
-                                        l = n - int(m)
-
+                                        # But sppl may not exist yet so have condition here.
+                                        try:
+                                            m = int(sppl[-1][-1])
+                                            l = n - int(m)
+                                        except:
+                                            l = 2
                                         # If person in the previous sentence, use that one
                                         if l == 1 and no_prows == 0:
                                             h.last = person_set(most_recent_person, next_person)[0]
                                             h.person = person_set(most_recent_person, next_person)[1]
                                             h.role = person_set(most_recent_person, next_person)[2]
                                             h.firm = person_set(most_recent_person, next_person)[3]
+                                            h.former = person_set(most_recent_person, next_person)[4]
                                             h.qsaid = "yes"
                                             h.qpref = "no"
                                             h.comment = "pronoun"
@@ -1674,6 +1761,7 @@ for art in arts:
                                                     h.person = df.loc[len(df.index) - 1].at['person']
                                                     h.firm = df.loc[len(df.index) - 1].at['firm']
                                                     h.role = df.loc[len(df.index) - 1].at['role']
+                                                    h.former = df.loc[len(df.index) - 1].at['former']
                                                     h.qsaid = "yes"
                                                     h.qpref = "no"
                                                     h.comment = "pronoun - reference partial profile"
@@ -1701,6 +1789,7 @@ for art in arts:
                                 h.person = "NA"
                                 h.firm = "NA"
                                 h.role = ''.join(''.join(elems) for elems in m)
+                                h.former = former_search(filtered_sent, h.role)
                                 h.quote = stence
                                 h.qtype = "paraphrase"
                                 h.qsaid = "yes"
@@ -1729,7 +1818,7 @@ for art in arts:
                                     h.person = person_set(most_recent_person, next_person)[1]
                                     h.role = person_set(most_recent_person, next_person)[2]
                                     h.firm = person_set(most_recent_person, next_person)[3]
-
+                                    h.former = person_set(most_recent_person, next_person)[4]
                                     h.qtype = "paraphrase"
                                     h.qsaid = "yes"
                                     h.qpref = "no"
@@ -1755,7 +1844,7 @@ for art in arts:
                                             h.person = person_set(most_recent_person, next_person)[1]
                                             h.role = person_set(most_recent_person, next_person)[2]
                                             h.firm = person_set(most_recent_person, next_person)[3]
-
+                                            h.former = person_set(most_recent_person, next_person)[4]
                                             h.qtype = "paraphrase"
                                             h.qsaid = "yes"
                                             h.qpref = "no"
@@ -1779,6 +1868,7 @@ for art in arts:
                                                         h.person = "NA"
                                                         h.firm = org
                                                         h.role = m
+                                                        h.former = former_search(filtered_sent, h.role)
                                                         h.qtype = "paraphrase"
                                                         h.qsaid = "yes"
                                                         h.qpref = "one or more firms"
@@ -1795,6 +1885,7 @@ for art in arts:
                                                             h.person = "NA"
                                                             h.firm = org
                                                             h.role = "NA"
+                                                            h.former = "NA"
                                                             h.qtype = "paraphrase"
                                                             h.qsaid = "yes"
                                                             h.qpref = "no"
@@ -1809,6 +1900,7 @@ for art in arts:
                                                             h.person = "NA"
                                                             h.firm = org
                                                             h.role = "NA"
+                                                            h.former = "NA"
                                                             h.qtype = "paraphrase"
                                                             h.qsaid = "yes"
                                                             h.qpref = "no"
@@ -1839,6 +1931,7 @@ for art in arts:
                                                 h.person = person_set(most_recent_person, next_person)[1]
                                                 h.role = person_set(most_recent_person, next_person)[2]
                                                 h.firm = person_set(most_recent_person, next_person)[3]
+                                                h.former = person_set(most_recent_person, next_person)[4]
                                                 h.qtype = "multi-sentence quote"
                                                 h.qsaid = "yes"
                                                 h.qpref = "no"
@@ -1855,6 +1948,7 @@ for art in arts:
                                                 h.person = person_set(most_recent_person, next_person)[1]
                                                 h.role = person_set(most_recent_person, next_person)[2]
                                                 h.firm = person_set(most_recent_person, next_person)[3]
+                                                h.former = person_set(most_recent_person, next_person)[4]
                                                 h.qtype = "multi-sentence quote"
                                                 h.qsaid = "yes"
                                                 h.qpref = "no"
@@ -1899,6 +1993,7 @@ for art in arts:
                             h.person = prows[0][1]
                             h.role = prows[0][2]
                             h.firm = prows[0][3]
+                            h.former = prows[0][4]
                             h.qsaid = "yes"
                             h.qpref = "single"
                             h.comment = "high accuracy"
@@ -1932,6 +2027,7 @@ for art in arts:
                                         h.person = prows[0][1]
                                         h.role = prows[0][2]
                                         h.firm = prows[0][3]
+                                        h.former = prows[0][4]
                                         h.qtype = "multi-sentence quote"
                                         h.qsaid = "yes"
                                         h.qpref = "single"
@@ -1956,6 +2052,7 @@ for art in arts:
                                 df.loc[len(df.index) - 1].at['person'] = prows[0][1]
                                 df.loc[len(df.index) - 1].at['firm'] = prows[0][2]
                                 df.loc[len(df.index) - 1].at['role'] = prows[0][3]
+                                df.loc[len(df.index) - 1].at['former'] = prows[0][4]
 
                             elif len(q) == 0:
 
@@ -1964,6 +2061,7 @@ for art in arts:
                                 h.person = prows[0][1]
                                 h.role = prows[0][2]
                                 h.firm = prows[0][3]
+                                h.former = prows[0][4]
                                 h.qtype = "paraphrase"
                                 h.qsaid = "yes"
                                 h.qpref = "single"
@@ -1982,6 +2080,7 @@ for art in arts:
                             h.person = per[1]
                             h.role = per[2]
                             h.firm = per[3]
+                            h.former = per[4]
 
                             # Check if full quote
                             # Quote then said-equivalent is within three spaces of last name
@@ -2033,6 +2132,7 @@ for art in arts:
                                                 h.person = prows[0][1]
                                                 h.role = prows[0][2]
                                                 h.firm = prows[0][3]
+                                                h.former = prows[0][4]
                                                 h.qtype = "multi-sentence quote"
                                                 h.qsaid = "yes"
                                                 h.qpref = "multiple"
@@ -2071,6 +2171,7 @@ for art in arts:
                             h.person = person_set(most_recent_person, next_person)[1]
                             h.role = person_set(most_recent_person, next_person)[2]
                             h.firm = person_set(most_recent_person, next_person)[3]
+                            h.former = person_set(most_recent_person, next_person)[4]
                             h.qsaid = "no"
                             h.qpref = "no"
                             h.comment = "Quote with at least two words inside"
@@ -2107,14 +2208,16 @@ for art in arts:
                                         # Check if there's a person in that last sentence
                                         if len(last_ppl) > 0 and no_people == 0:
                                             for i in range(0, len(msent_quotes)):
+
                                                 h.quote = msent_quotes[i]
                                                 h.stence = stences[i]
                                                 h.sentiment = sentiments[i]
                                                 h.n = nindex[i]
-                                                h.last = dfsent.loc[last_sindex].at['people'][0][0]
-                                                h.person = dfsent.loc[last_sindex].at['people'][0][1]
-                                                h.role = dfsent.loc[last_sindex].at['people'][0][2]
-                                                h.firm = dfsent.loc[last_sindex].at['people'][0][3]
+                                                h.last = dfsent.loc[last_sindex].at['prows'][0][0]
+                                                h.person = dfsent.loc[last_sindex].at['prows'][0][1]
+                                                h.role = dfsent.loc[last_sindex].at['prows'][0][2]
+                                                h.firm = dfsent.loc[last_sindex].at['prows'][0][3]
+                                                h.former = dfsent.loc[last_sindex].at['prows'][0][4]
                                                 h.qtype = "multi-sentence quote"
                                                 h.qsaid = "no"
                                                 h.qpref = "no"
@@ -2133,6 +2236,7 @@ for art in arts:
                                                 h.person = person_set(most_recent_person, next_person)[1]
                                                 h.role = person_set(most_recent_person, next_person)[2]
                                                 h.firm = person_set(most_recent_person, next_person)[3]
+                                                h.former = person_set(most_recent_person, next_person)[4]
                                                 h.qtype = "multi-sentence quote"
                                                 h.qsaid = "no"
                                                 h.qpref = "no"
@@ -2168,6 +2272,7 @@ for art in arts:
                                 h.person = "NA"
                                 h.firm = "NA"
                                 h.role = "NA"
+                                h.former = "NA"
                                 h.qsaid = "no"
                                 h.qpref = "one or more"
                                 h.comment = "Review, whether quote or something else, not clear"
@@ -2202,6 +2307,7 @@ for art in arts:
                                         h.person = person_set(most_recent_person, next_person)[1]
                                         h.role = person_set(most_recent_person, next_person)[2]
                                         h.firm = person_set(most_recent_person, next_person)[3]
+                                        h.former = person_set(most_recent_person, next_person)[4]
                                         h.qtype = "multi-sentence quote"
                                         h.qsaid = "no"
                                         h.qpref = "one or more"
@@ -2217,7 +2323,7 @@ for art in arts:
 
 
         #except:
-        #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
+        #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
         #                            "Sentence-level Issue", AN, date, source, regions, subjects, misc, industries,
         #                            focfirm, by, comp, sentiment, stence]
 
@@ -2227,7 +2333,7 @@ for art in arts:
               "mean rate:", round((t2 - t0) / (art + 1), 2))
 
     #except:
-    #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
+    #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
     #                            "Article NLP issue", AN, date, source, "Issue", "Issue", "Issue", "Issue", "Issue",
     #                            "Issue", "Issue", "Issue", "Issue"]
 
@@ -2245,4 +2351,5 @@ df
 # TO DO:
 # "Former" leaders
 # Test 25 random ones.
-# Headlines types of articles 232
+# Wishlist:
+#       Correct erronious non-space after title (e.g., "vice presidentAndy Peterson") or before title.
