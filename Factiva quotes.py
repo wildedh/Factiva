@@ -16,8 +16,8 @@ nlp = stanza.Pipeline('en')
 #dfa.rename(columns = {'index':'old index'}, inplace = True)
 
 
-dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/final4.xlsx')
-#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_04_raw3.xlsx')
+#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/final4.xlsx')
+dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_06_2684_articles.xlsx')
 
 
 t0 = time.time()
@@ -56,16 +56,20 @@ l2 = r'executive\s+vice\s+president|executive\s+vice-president|sr\.\s+vice\s+pre
 l3 = r'vice\s+chair\S+|vice\s+president|vice-president|senior\s+manager|sr.*manager|senior\s+director|' \
      r'chief\s+executive|senior\s+manager|sr.*manager|vp\s+of\s+\S+|global\+director|senior\s+director|' \
      r'sr.*director|managing\s+director|vice\s+minister|prime\s+minister|founding\s+partner|board\s+member' \
-     r'business\s+owner|sales\s+manager|svp'
+     r'business\s+owner|sales\s+manager|svp|chief\s+engineer|chief\s+of\s+\S+|founder\s+and+S+'
 
 l4 = r'president|chair\S+|director|manager|vp|' \
      r'banker\b|specialist\b|accountant\b|journalist\b|reporter\b|analyst\b|consultant\b|negotiator\b|' \
      r'governor\b|congress\S+|house\s+speaker|senator|senior\s+fellow|fellow|undersecretary|' \
      r'spokesman\b|spokesperson\b|spokeswoman\b|representative\b|official\b|executive\b|\baide\b|\bpilot\b|professor|' \
      r'attorney|minister|secretary|\bguru\b|partner|general\s+counsel|mayor|dealer|board|administrator|owner|' \
-     r'leader'
+     r'leader|police\s+officer|police\s+chief|actor|actress|academy\s+award-winner|founder'
 
 l5 = r'\bC.O\b'
+
+leader_split = r'executive|president|director|manager|'\
+            r'Executive|President|Director|Manager'
+stext_split = r'said|told|comment'
 
 pron = r'\bhe\b|\bshe\b'
 plurals = r'analysts|bankers|consultants|executives|management|participants|officials|engineers'
@@ -77,7 +81,15 @@ qs = r'\`\`|\"|\'\''
 suf = r'\bJr\b|\bSr\b|\sI\s|\sII\s|\sIII\s|\bPhD\b|Ph\.D|\bMBA\b|\bCPA\b'
 analyst = r'analyst|negotiator|\baide\b|\bpilot\b|professor|' \
      r'attorney|minister|secretary|\bguru\b|partner|general\s+counsel|mayor|dealer|board|administrator|owner|' \
-     r'leader|president'
+     r'leader|president|police\s+officer|police\s+chief|academy\s+award-winner|actor|actress'
+car_types = r'pickup\s+truck|truck|crossover|sedan|minivan|van|sports-utility\s+vehicle|sports\s+utility\s+vehicle|' \
+            r'SUV|convertible\b|hatchback|station\s+wagon|coupe|sports|s+car|compact\s+car|roadster|mid-size\s+car|' \
+            r'supercar'
+car_makers_names = r'Aston\s+Martin'
+media = r'Reuters|Bloomberg|CNN|The\s+Independent|USA\s+Today|' \
+        r'Press|Daily|Times|Chronicle|' \
+        r'Journal|News|Herald|Post|Weekly|Telegraph|Wire|Bulletin|Inquirer|Digest'
+
 
 maxch = str(200)
 maxch1 = str(60)
@@ -90,6 +102,7 @@ mxlds = 2
 mxpron = 2
 mxorg1 = 2
 mxfrmer = 2
+mxcar = 2
 
 # Create a class in which to place variables and then create a function that will place all the variables
 # in a df row. Makes the code a bit more readable when you go through the todf function doezens of times
@@ -117,6 +130,8 @@ class Features:
 
 #Initation this class
 h = Features()
+
+
 
 
 #Function to produce multiple sentence quotes
@@ -212,7 +227,6 @@ def quote_set_even(sentence):
             # Want position 0, 2, 4, etc.
             if q % 2 == 1:
                 quotes.append(quote_split[q])
-
     return quotes
 
 def quote_set(sentence):
@@ -248,7 +262,7 @@ def quote_set(sentence):
             sentiments = multisent(sentence)[11]
             nindex = multisent(sentence)[12]
         else:
-            # Drop last quote to caputre any full quotes
+            # Drop last quote to capture any full quotes
             stence_drop_last_quote = re.sub('(.*)(' + qs + ')(.*)', r'\1 \3', stence)
             quotes = quote_set_even(stence_drop_last_quote)
             # Drop all quotation marks but last one and plug into multisent function
@@ -408,6 +422,8 @@ def threerolesearch(sentence, non_role_var1, non_role_var2):
     c10 = re.findall(r'' + non_role_var1 + r'.+(' + non_role_var2 + r').+(' + l5 + r')', sentence)
 
     org_find = c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9 + c10
+
+
     return org_find
 
 def rolesearch(sentence):
@@ -550,7 +566,7 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(54,85)
-arts = [6]
+arts = [604]
 
 for art in arts:
 #for art in dfa.index:
@@ -589,6 +605,7 @@ for art in arts:
         d3b = re.findall(r'^.{0,' + maxch + r'}\d\d*\s-', text, re.IGNORECASE)
         d3c = re.findall(r'^.{0,' + maxch + r'}\d\d*,\s\w+\s*-', text, re.IGNORECASE)
         d3d = re.findall(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b\s*--', text, re.IGNORECASE)
+        d3e = re.findall(r'^\S+\s+-\s+', text, re.IGNORECASE)
 
         #print("d1", d1, "d1a", d1a,  "d1b", d1b, "d2a", d2a, "d2b", d2b,
         #      "d3a", d3a, "d3b", d3b, "d3c", d3c, "d3d", d3d)
@@ -621,8 +638,10 @@ for art in arts:
             text = re.sub(r'^.{0,' + maxch + r'}\d\d*,\s\w+\s*-', '', text)
 
         elif len(d3d) > 0:
-            text = re.sub(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b.+\b\s*--', '', text)
+            text = re.sub(r'^[A-Z]+\b.{0,' + maxch1 + r'}\b\s*--', '', text)
 
+        elif len(d3e) > 0:
+            text = re.sub(r'^\S+\s+-\s+', '', text)
 
 
 
@@ -630,17 +649,39 @@ for art in arts:
         # Next, remove any instance of a set of non-white-space characters 1-letter parentheses (e.g., "(D)"). These mess up the NLP process as they mean something literally
         # in the PyTorch code.
         text = re.sub(r'\(\S+\)', '', text)
+        # Remove anything in between angle brackets
+        text = re.sub(r'<.+>', '', text)
+        # Remove any instances of all caps then colon then all caps (e.g., "(NYSE: F)")
+        text = re.sub(r'\(\s*[A-Z]+\s*:\s*[A-Z]+\s*\)', '', text)
         # Next, remove any of several other characters.
         text = re.sub(r'[\[\]()#/]', '', text)
         # Next replace * with period. Another issue with nlp
         text = re.sub(r'\*', r'.', text)
         # Separate any words with multiple upper-case then lower case patterns (e.g., "MatrixOne" -> "Matrix One")
         text = re.sub(r"(\b[A-Z][a-z]+)([A-Z][a-z]+)", r"\1 \2", text)
+
+        # To correct for any errors of not spacing in articles,
+        # Separate any words if said-equivalent next to other word.
+        text = re.sub(r'(' + stext_split + r')([A-Z]\S+)', r"\1 \2", text)
+        text = re.sub(r'(\S+)(' + stext_split + r')', r"\1 \2", text)
+        # Also separate any words if any leadership role next to other word.
+        text = re.sub(r'(' + leader_split + r')([A-Z]\S+)', r"\1 \2", text, re.IGNORECASE)
+        text = re.sub(r'(\S+)(' + leader_split + r')', r"\1 \2", text, re.IGNORECASE)
+
         # Remove any words with backslashes in them. There are some articles with these for tagging purposes
         text = re.sub(r'[\\+]', '_', text)
-        # Remove suffixes
-        #text = re.sub(r'' + suf + r'', '', text)
-
+        # Remove suffixes where a period
+        text = re.sub(r'(' + suf + r')[.]', '', text)
+        # Remove suffixes all together even without a period
+        text = re.sub(r'(' + suf + r')', '', text)
+        # Remove single capital letter followed by period
+        text = re.sub(r'[A-Z][.]', '', text)
+        # Replace erroneious quote then s with apostrophy s.
+        text = re.sub(r'"s ', r"'s ", text)
+        # Remove elipses
+        text = re.sub(r'\.\s*\.\s*\.', r'', text)
+        # Remove any spaces beyond one.
+        text = re.sub(r'(\s+)', r' ', text)
 
 
 
@@ -702,7 +743,7 @@ for art in arts:
 
         # Create a sentence-level DFs
         columns = ['no.', 'stence', 'filtered_sent', 'sentiment', 'orgs', 'corgs', 'ppl', 'prows', 'people',
-                   'sppl', 'covered']
+                   'sppl', 'covered', 'events']
         dfsent = pd.DataFrame(columns=columns)
 
         # Create a DF for people
@@ -868,9 +909,11 @@ for art in arts:
 
                 ppl = []
                 lasts = []
-                orgs = []
-                prows = []
                 prod = []
+                orgs = []
+                events = []
+
+                prows = []
 
                 #variables for future sentences as needed (for multi-sentence quotes)
                 fppl = []
@@ -888,35 +931,71 @@ for art in arts:
                 #for ent in sent.ents:
                 #    print(n, ent.text, ent.type)
 
-                # Must stip the the sentence of any quotes in order to arrive at appropriate orgs, people, and products
-                # First, remove any information within quotes:
-                filtered_sent = re.sub(r'(' + start + r').+(' + end + r')', ' ', stence)
-                # Second, remove information in beginning of multi-sentence quotes
-                # the start quote would have a space before the quote
-                filtered_sent = re.sub(r'([:|,])\s+(' + start + r')\S.+$', ' ', filtered_sent)
-                # Third, remove cases in which the quote begins in the sentance and doesn't end.
-                filtered_sent = re.sub(r'^(' + start + r')\S.+$', ' ', filtered_sent)
-                # Last, remove information at the end of multi-sentence quotes
-                # the end quote would have a space after the quote
-                filtered_sent = re.sub(r'^.+(' + end + r')\s+', ' ', filtered_sent)
+                ############################################
+                # CREATE STRING THAT FILTERS OUT ANY QUOTES:
+                ############################################
+                non_quotes = []
+                # split the sentence by quotation mark
+                quote_split = re.split(r'(' + qs + r')', stence)
+                # Remove blanks if any
+                quote_split = list(filter(None, quote_split))
+                # Remove any items that are quotation marks
+                rex = re.compile(r'' + qs + r'')
+                quote_split = [x for x in quote_split if not rex.match(x)]
+
+                if len(quote_split)==1:
+                    filtered_sent = stence
+
+                else:
+                    for q in range(len(quote_split)):
+                        quote_beginning = re.findall(r'^\s*(' + start + r')', stence, re.IGNORECASE)
+                        if len(quote_beginning) > 0:
+                            # If quote from the start of sentence,
+                            # Want position 0, 2, etc. whether it's even or odd number of quotation marks
+                            if q % 2 == 1:
+                                non_quotes.append(quote_split[q])
+                        elif len(quote_beginning) == 0:
+                            # Now need to distinquish between whether the first quote is the end of a multi-sentence
+                            # or the beginning of a new one. A space before the first quote should distinguish this.
+                            before_first_quote = re.findall(r'^.+?(?=' + start + r')', stence, re.IGNORECASE)
+                            if len(before_first_quote) > 0:
+                                space_before_first_quote = re.findall(r'\s$', before_first_quote[0], re.IGNORECASE)
+                                if len(space_before_first_quote) > 0:
+                                    # Check if a space before the first quotation mark. If so, it would indicate it's not
+                                    # The end of a multi-sentence quote.
+                                    if q % 2 == 0:
+                                        non_quotes.append(quote_split[q])
+                                else:
+                                    if q % 2 == 1:
+                                        non_quotes.append(quote_split[q])
+
+                    filtered_sent = ''.join(''.join(elems) for elems in non_quotes)
 
 
-
+                ############################################
                 # Check if you can add to dataset of people/firm/role
                 # First, compile a list of people and organizations and products iteratively within the sentence.
                 # You use products list in the orgs list so need to run them sep.
+                ############################################
                 for ent in sent.ents:
                     if ent.type == "PERSON":
+                        # Check if inside the filtered portion of sentence
                         z = re.findall(r'' + ent.text + r'', filtered_sent)
                         if len(z) > 0:
-                            ppl.append(ent.text)
-                            sfx = re.findall(r'(' + suf + r')', ent.text, re.IGNORECASE)
-                            if len(sfx) > 0:
-                                l = ent.text.split()[-2]
-                                lasts.append(l)
-                            elif len(sfx) == 0:
-                                l = ent.text.split()[-1]
-                                lasts.append(l)
+                            #Make sure it's not a car company that looks like a name e.g., Aston Martin
+                            car_maker_check = re.findall(r'' + car_makers_names + r'', ent.text)
+                            if len(car_maker_check)>0:
+                                orgs.append(ent.text)
+                                corgs.append(ent.text)
+                            else:
+                                ppl.append(ent.text)
+                                sfx = re.findall(r'(' + suf + r')', ent.text, re.IGNORECASE)
+                                if len(sfx) > 0:
+                                    l = ent.text.split()[-2]
+                                    lasts.append(l)
+                                elif len(sfx) == 0:
+                                    l = ent.text.split()[-1]
+                                    lasts.append(l)
 
                     # Check if a last name was incorrectly marked as not a PERSON (e.g., an ORG)
                     # and if so, assign as PERSON
@@ -943,31 +1022,57 @@ for art in arts:
                         tion = ent.text
                         # remove odd punctuation such as ")" that can mess up the regex down the line
                         tion = re.sub(r'[()]', '', tion)
+                        # Check if in the media, if so don't include
+                        news_check = re.findall(r'(' + media + r')', tion)
+                        if len(news_check)==0:
+                            z = re.findall(r'' + tion + r'', filtered_sent)
+                            if len(z) > 0:
+                                # don't include acronyms
+                                a = re.findall(r'\(\s*' + tion + r'\s*\)', stence)
+                                a = ''.join(''.join(elems) for elems in a)
+                                if len(a) == 0:
+                                    # Not an acronym, so see if a car type is followed by the org
+                                    # If the org name is followed closely by a vehicle type name (e.g., sedan)
+                                    # The name should not be considered in terms of people and roles.
+                                    # It would just be a make of a car, e.g., "Mercedes E-class sedan"
+                                    car_make = re.findall(
+                                        r'(' + tion + r')\W+(?:\w+\W+){0,' + str(mxcar) + r'}?(' + car_types + r')',
+                                        filtered_sent, re.IGNORECASE)
+                                    if len(car_make) == 0:
+                                        # Not a car make, so see if any products in sentence:
+                                        # If not, see if already in list
+                                        if len(prod) == 0:
+                                            if tion not in orgs:
+                                                # If not, append
+                                                orgs.append(tion)
+                                                corgs.append(tion)
+                                        # If products in the sentence,
+                                        # check if it's not just a brand name with a product after it
+                                        # like "Toyota SRV"
+                                        else:
+                                            d = []
+                                            for p in prod:
+                                                c = re.findall(r'' + ent.type + r'\s+' + p + r'', stence)
+                                                d = d + c
+                                            # If not, then just make sure it's not already in the list.
+                                            if len(d) == 0:
+                                                if tion not in orgs:
+                                                    # If not, append
+                                                    orgs.append(tion)
+                                                    corgs.append(tion)
 
-                        z = re.findall(r'' + tion + r'', filtered_sent)
-                        if len(z) > 0:
-                            # don't include acronyms
-                            a = re.findall(r'\(\s*' + tion + r'\s*\)', stence)
-                            a = ''.join(''.join(elems) for elems in a)
-                            if len(a) == 0:
-                                # Not an acronym, so see if any products in sentence:
-                                # If not, see if already in list
-                                if len(prod) == 0:
-                                    if tion not in orgs:
-                                        orgs.append(tion)
-                                        corgs.append(tion)
-                                # If not, check if it's not just a brand name with a product after it like Toyota SRV
-                                else:
-                                    d = []
-                                    for p in prod:
-                                        c = re.findall(r'' + ent.type + r'\s+' + p + r'', stence)
-                                        d = d + c
-                                    # If not, then just make sure it's not already in the list.
-                                    # If not, append
-                                    if len(d) == 0:
-                                        if tion not in orgs:
-                                            orgs.append(tion)
-                                            corgs.append(tion)
+                # also, add the events
+                for ent in sent.ents:
+                    if ent.type == "EVENT":
+                        event = ent.text
+                        events.append(event)
+
+                # remove duplicates from each list:
+                orgs = list(set(orgs))
+                corgs = list(set(corgs))
+                lasts = list(set(lasts))
+                prod = list(set(prod))
+                ppl = list(set(ppl))
 
 
                 # Next, if there are any people, see if should add to running People list
@@ -1016,18 +1121,20 @@ for art in arts:
 
                             # Multiple orgs in sentence
                             elif len(orgs) > 1:
-
                                 # Create list and variable that will be used at the end of this iteration of orgs
                                 # "gm" checks if there are any instances in which an org is a substring of another
                                 #  org name. If yes, len(g)>0. If not, len(g) = 0 and you're good.
                                 c = 0
                                 b = 0
                                 q = 0
-                                xl = []
+                                xl = 0
                                 op = ""
                                 gh = []
                                 gp = []
+                                rolexl = ""
+                                firmxl = ""
                                 for o in orgs:
+
                                     or1 = orgs.copy()
                                     or1.remove(o)
 
@@ -1049,8 +1156,6 @@ for art in arts:
                                 gh = flatten(gh)
 
                                 gm = ''.join(''.join(elems) for elems in gh)
-
-
 
                                 repeat_orgs = []
                                 repeat_count = 0
@@ -1116,7 +1221,6 @@ for art in arts:
                                         if q > 0 and l == 0:
                                             continue
 
-
                                         # Check if there is possession with one "'s" in the org
                                         o1 = re.findall(r'' + o + r'\'s', filtered_sent, re.IGNORECASE)
                                         o2 = re.findall(r'\'s', o, re.IGNORECASE)
@@ -1178,6 +1282,8 @@ for art in arts:
                                                     q += 1
                                                     if len(gm) == 0:
                                                         break
+
+
                                                 # If only one person and the only multiple companies are
                                                 # part of each other, just pick the first one mentioned.
                                                 elif len(j) == 0:
@@ -1193,7 +1299,6 @@ for art in arts:
                                                         q += 1
                                                         if len(gm) == 0:
                                                             break
-
 
                                                     # If not any of these three strong matches ('s, of, whose),
                                                     # check on a weaker match: if name are close to title
@@ -1222,24 +1327,24 @@ for art in arts:
                                                             m = threerolesearch(filtered_sent, per, o)
 
                                                             if len(m) > 0:
-                                                                for i in m:
-                                                                    j = ''.join(''.join(elems) for elems in i)
-                                                                    if len(j) > 0:
-                                                                        xl.append(j)
-                                                                        op = o
-                                                                c += 1
-                                                                if len(gm) == 0:
-                                                                    break
+                                                                r = role_set(role_list,per)
+                                                                if len(r) > 0:
+                                                                    xl += 1
+                                                                    rolexl = r
+                                                                    firmxl = o
+                                                                    c += 1
 
-                                if len(xl) == 1:
-                                    role = re.sub(r'' + op + r'', '', xl[0])
+
+                                if xl == 1:
+                                    role = rolexl
                                     former = former_search(filtered_sent, role)
-                                    firm = re.sub(r'' + role + r'', '', xl[0])
+                                    firm = firmxl
                                     person = per
                                     last = person_name(person)[1]
 
 
                             elif len(orgs) == 0:
+
                                 # Check if an analyst from an unnamed firm
                                 analyst_search = re.findall(r'(' + analyst + r')', filtered_sent, re.IGNORECASE)
                                 if len(analyst_search)>0:
@@ -1249,8 +1354,17 @@ for art in arts:
                                     former = former_search(filtered_sent, role)
                                     firm = "NOTNAMED"
 
-                                # If there's a titled person with no org, it may be the org in previous reference
-                                # If a repeat person, this will be filtered out below.
+                                else:
+                                    #Check if there was an event name in the previous sentence.
+                                    if n>1 and len(dfsent.iloc[n-2]['events'])>0:
+                                        person = per
+                                        last = person_name(person)[1]
+                                        role = role_set(role_list, per)
+                                        former = former_search(filtered_sent, role)
+                                        firms = dfsent.iloc[n-2]['events']
+
+                                # If there's a titled person with no org, it may be the org in
+                                # previous reference. If a repeat person, this will be filtered out below.
                                 # If not org in previous sentence, this will also be dropped:
                                 if len(dfsent) > 0:
                                     person = per
@@ -1280,7 +1394,7 @@ for art in arts:
                 elif len(ppl) == 0:
                     if len(orgs) == 1:
                         o = orgs[0]
-                        m = shortrolesearch(filtered_sent, o, mxorg1)
+                        m = longrolesearch(filtered_sent, o)
 
                         on = ''.join(''.join(elems) for elems in m)
 
@@ -1302,7 +1416,6 @@ for art in arts:
                             # Last, remove information at the end of multi-sentence quotes
                             # the end quote would have a space after the quote
                             sty4 = re.sub(r'^.+(' + end + r')\s+', ' ', sty3)
-
 
                             # Check if there are any people in the non-quote portion of the sentence:
                             for ent in j.ents:
@@ -1336,6 +1449,61 @@ for art in arts:
                                 # which is the condition to be added for all other instances.
                                 sppl.append(people[-1])
 
+                    elif len(orgs)>1:
+                        # If there is a role and org close together, then check if a single person
+                        # in the next sentence:
+                        for o in orgs:
+                            m = shortrolesearch(filtered_sent, o, mxorg1)
+
+                            on = ''.join(''.join(elems) for elems in m)
+                            if len(on) > 0 and n < len(doc.sentences):
+                                pz = []
+                                j = doc.sentences[n]
+                                b = j.text
+                                #### Filter out any quotes, then use that as the reference for filtered_sent below
+                                # Must stip the the sentence of any quotes in order to arrive at appropriate orgs, people, and products
+                                # First, remove any information within quotes:
+                                sty1 = re.sub(r'(' + start + r').+(' + end + r')', ' ', b)
+                                # Second, remove information in beginning of multi-sentence quotes
+                                # the start quote would have a space before the quote
+                                sty2 = re.sub(r'([:|,])\s+(' + start + r')\S.+$', ' ', sty1)
+                                # Third, remove cases in which the quote begins in the sentance and doesn't end.
+                                sty3 = re.sub(r'^(' + start + r')\S.+$', ' ', sty2)
+                                # Last, remove information at the end of multi-sentence quotes
+                                # the end quote would have a space after the quote
+                                sty4 = re.sub(r'^.+(' + end + r')\s+', ' ', sty3)
+
+                                # Check if there are any people in the non-quote portion of the sentence:
+                                for ent in j.ents:
+                                    if ent.type == "PERSON":
+                                        z = re.findall(r'' + ent.text + r'', sty4)
+                                        if len(z) > 0:
+                                            # This will add the person and last name to these lists
+                                            pz.append(ent.text)
+
+                                # If there's just one person, assign
+                                if len(pz) == 1:
+                                    # Add to the ppl and lasts lists
+                                    person = pz[0]
+                                    sfx = re.findall(r'(' + suf + r')', person, re.IGNORECASE)
+                                    if len(sfx) > 0:
+                                        last = person.split()[-2]
+                                        lasts.append(last)
+
+                                    elif len(sfx) == 0:
+                                        last = person.split()[-1]
+                                        lasts.append(last)
+
+                                    firm = o
+                                    # Add the role by iteratively going through the hierarchy of titles
+                                    role = role_set(m, firm)
+                                    former = former_search(filtered_sent, role)
+                                    people = make_row(last, person, role, firm, former, n, people)
+                                    # In order to include this person in the sppl list, need to add it
+                                    # right here. It won't be added below
+                                    # because the person's last name is not in the focal sentence,
+                                    # which is the condition to be added for all other instances.
+                                    sppl.append(people[-1])
 
                     elif len(orgs)==0:
                         # For the situation in which a role is named but no name or affiliation such as when
@@ -1390,8 +1558,6 @@ for art in arts:
                                                     people = make_row(last, person, role, firm, former, n, people)
                                                     break
 
-
-
                 # Running list of full names of People list of lists
                 fulls = [per[1] for per in people]
                 lsts = [per[0] for per in people]
@@ -1425,7 +1591,7 @@ for art in arts:
                 covered = None
 
                 dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent,sentiment, orgs, corgs, ppl, prows,
-                                                 people, sppl, covered]
+                                                 people, sppl, covered, events]
 
                 n += 1
                 h.n += 1
@@ -1450,6 +1616,7 @@ for art in arts:
                 ppl = dfsent["ppl"][se]
                 prows = dfsent["prows"][se]
                 people = dfsent["people"][se]
+                events = dfsent["events"][se]
 
 
 
@@ -2208,7 +2375,6 @@ for art in arts:
                                         # Check if there's a person in that last sentence
                                         if len(last_ppl) > 0 and no_people == 0:
                                             for i in range(0, len(msent_quotes)):
-
                                                 h.quote = msent_quotes[i]
                                                 h.stence = stences[i]
                                                 h.sentiment = sentiments[i]
@@ -2349,7 +2515,8 @@ df
 
 
 # TO DO:
-# "Former" leaders
 # Test 25 random ones.
 # Wishlist:
 #       Correct erronious non-space after title (e.g., "vice presidentAndy Peterson") or before title.
+# Make list of news papers
+# avoid false positives if title in between - don't jsut take most recent
