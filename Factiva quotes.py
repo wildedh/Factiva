@@ -6,6 +6,8 @@ import numpy as np
 import stanza
 import openpyxl
 import re
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
 
 
 # stanza.download('en')
@@ -16,8 +18,8 @@ nlp = stanza.Pipeline('en')
 #dfa.rename(columns = {'index':'old index'}, inplace = True)
 
 
-#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/final4.xlsx')
-dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_06_2684_articles.xlsx')
+dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/final4.xlsx')
+#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_06_2684_articles.xlsx')
 
 
 t0 = time.time()
@@ -33,12 +35,12 @@ t0 = time.time()
 # get the article slice
 #dfa = pd.read_pickle(INFILE)[int(STARTROW): int(ENDROW)]
 
-columns = ['sent', 'firm', 'person', 'last', 'role',  'former', 'quote',  'qtype', 'qsaid',
+columns = ['sent', 'firm', 'person', 'last', 'role',  'former', 'quote', 'sentence', 'qtype', 'qsaid',
            'qpref', 'comment', 'AN', 'date', 'source', 'regions', 'subjects', 'misc',
-           'industries', 'focfirm', 'by', 'comp', 'sentiment', 'sentence']
+           'industries', 'focfirm', 'by', 'comp', 'sentiment_stanza', 'sent_vader_neg',
+           'sent_vader_neu', 'sent_vader_pos']
 
 df = pd.DataFrame(columns=columns)
-
 
 
 stext = r'said|n.t say|say|told|n.t tell\S+|\btell\S+|assert\S+|according\s+to|n.t comment\S+|comment\S+|quote\S+' \
@@ -109,23 +111,29 @@ mxcar = 2
 class Features:
     def __init__(self):
         self.df = self.qtype = self.qsaid = self.qpref = self.comment = self.n= self.person = \
-        self.last = self.role = self.firm = self.former = self.quote = self.AN = self.date = self.source = \
+        self.last = self.role = self.firm = self.former = self.quote = self.sentence = self.AN = self.date = self.source = \
         self.regions = self.subjects = self.misc = self.industries = self.focfirm = self.by = \
-        self.comp = self.sentiment = self.stence = None
+        self.comp = self.sentiment_stanza = self.sent_vader_neg = self.sent_vader_neu = self.sent_vader_pos = None
+
+
+
 
     def todf(self):
-        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role,  self.former, self.quote, self.qtype,
-                                           self.qsaid, self.qpref, self.comment, self.AN, self.date, self.source,
-                                           self.regions, self.subjects, self.misc, self.industries, self.focfirm,
-                                           self.by, self.comp, self.sentiment, self.stence]
+        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role,  self.former, self.quote,
+                                           self.sentence, self.qtype, self.qsaid, self.qpref, self.comment, self.AN,
+                                           self.date, self.source, self.regions, self.subjects, self.misc,
+                                           self.industries, self.focfirm, self.by, self.comp, self.sentiment_stanza,
+                                           self.sent_vader_neg, self.sent_vader_neu, self.sent_vader_pos]
 
         dfsent.at[n - 1, 'covered'] = 1
 
     def todf_info(self):
-        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role, self.former, self.quote, self.qtype,
-                                           self.qsaid, self.qpref, self.comment, self.AN, self.date, self.source,
-                                           self.regions, self.subjects, self.misc, self.industries, self.focfirm,
-                                           self.by, self.comp, self.sentiment, self.stence]
+        df.loc[len(df.index)] = [self.n, self.firm, self.person, self.last, self.role,  self.former, self.quote,
+                                           self.sentence, self.qtype, self.qsaid, self.qpref, self.comment, self.AN,
+                                           self.date, self.source, self.regions, self.subjects, self.misc,
+                                           self.industries, self.focfirm, self.by, self.comp, self.sentiment_stanza,
+                                           self.sent_vader_neg, self.sent_vader_neu, self.sent_vader_pos]
+
 
 
 #Initation this class
@@ -146,10 +154,19 @@ def multisent(stence):
     stences.append(stence)
     # Create list of sentiments
     sentiments = []
+    sent_vader_negs = []
+    sent_vader_neus = []
+    sent_vader_poss = []
     # Sentiment of current sentence, which is index n-1
     k = doc.sentences[n-1]
-    sentiment = k.sentiment
-    sentiments.append(sentiment)
+    sentiment_stanza = k.sentiment
+    sent_vader_neg = sentiment_scores(k.text)[0]
+    sent_vader_neu = sentiment_scores(k.text)[1]
+    sent_vader_pos = sentiment_scores(k.text)[2]
+    sent_vader_negs.append(sent_vader_neg)
+    sent_vader_neus.append(sent_vader_neu)
+    sent_vader_poss.append(sent_vader_pos)
+    sentiments.append(sentiment_stanza)
     first_before_quote = re.findall(r'(.+)(' + start + r')', stence, re.IGNORECASE)
     first_before_quote = ''.join(''.join(elems) for elems in first_before_quote)
     first_before_quote = re.sub(r'(' + qs + r')', '', first_before_quote)
@@ -170,8 +187,14 @@ def multisent(stence):
             dfsent.at[sindex - 1, 'covered'] = 1
             j = doc.sentences[sindex]
             msent = j.text
-            sentiment = j.sentiment
-            sentiments.append(sentiment)
+            sentiment_stanza = j.sentiment
+            sentiments.append(sentiment_stanza)
+            sent_vader_neg = sentiment_scores(msent)[0]
+            sent_vader_neu = sentiment_scores(msent)[1]
+            sent_vader_pos = sentiment_scores(msent)[2]
+            sent_vader_negs.append(sent_vader_neg)
+            sent_vader_neus.append(sent_vader_neu)
+            sent_vader_poss.append(sent_vader_pos)
             lastmsent_quote = re.findall(r'(.+)(' + end + r')', msent, re.IGNORECASE)
             lastmsent_quote = ''.join(''.join(elems) for elems in lastmsent_quote)
             lastmsent_quote = re.sub(r'(' + qs + r')', '', lastmsent_quote)
@@ -202,8 +225,8 @@ def multisent(stence):
 
     # the output from the function
     return last_sindex, msent_quote, last_after_quote, first_said, first_pron, first_ppl, \
-           last_said, last_pron, last_ppl, msent_quotes, stences, sentiments, nindex
-
+           last_said, last_pron, last_ppl, msent_quotes, stences, sentiments, nindex, sent_vader_negs, \
+           sent_vader_neus, sent_vader_poss
 
 
 
@@ -233,7 +256,7 @@ def quote_set(sentence):
     quotes =[]
     last_sindex = msent_quote = last_after_quote = first_said = \
         first_pron = first_ppl = last_said = last_pron = last_ppl = msent_quotes = stences = \
-        sentiments = nindex = None
+        sentiments = nindex = sent_vader_negs =  sent_vader_neus = sent_vader_poss = None
     multi_sent_indicator = 0
     # Since no clear person reference, check for FULL quotes:
     q_marks = re.findall(r'(' + qs + r')', sentence, re.IGNORECASE)
@@ -261,6 +284,9 @@ def quote_set(sentence):
             stences = multisent(sentence)[10]
             sentiments = multisent(sentence)[11]
             nindex = multisent(sentence)[12]
+            sent_vader_negs = multisent(sentence)[13]
+            sent_vader_neus = multisent(sentence)[14]
+            sent_vader_poss = multisent(sentence)[15]
         else:
             # Drop last quote to capture any full quotes
             stence_drop_last_quote = re.sub('(.*)(' + qs + ')(.*)', r'\1 \3', stence)
@@ -280,10 +306,14 @@ def quote_set(sentence):
             stences = multisent(all_but_last)[10]
             sentiments = multisent(all_but_last)[11]
             nindex = multisent(all_but_last)[12]
+            sent_vader_negs  = multisent(all_but_last)[13]
+            sent_vader_neus = multisent(all_but_last)[14]
+            sent_vader_poss = multisent(all_but_last)[15]
 
 
     return last_sindex, msent_quote, last_after_quote, first_said, first_pron, first_ppl, \
-           last_said, last_pron, last_ppl, msent_quotes, stences, sentiments, nindex, quotes, multi_sent_indicator
+           last_said, last_pron, last_ppl, msent_quotes, stences, sentiments, nindex, quotes, multi_sent_indicator, \
+           sent_vader_negs, sent_vader_neus, sent_vader_poss
 
 # Function for when you want to search with instance of a role and another variable, when distance between
 # doesn't matter.
@@ -399,8 +429,6 @@ def ofrolesearch(sentence, non_role_var, max_char):
 
 
 
-
-
 def threerolesearch(sentence, non_role_var1, non_role_var2):
     c1 = re.findall(r'' + non_role_var1 + r'.+(' + l1 + r').+(' + non_role_var2 + r')', sentence,
                     re.IGNORECASE)
@@ -451,7 +479,7 @@ def info_extraction(stence, orgs):
         h.qsaid = "NA"
         h.qpref = "NA"
         h.comment = "information about one firm"
-        h.quote = stence
+        h.quote = h.sentence = stence
         h.todf_info()
 
     # Second, if multiple orgs, add that information
@@ -466,7 +494,7 @@ def info_extraction(stence, orgs):
             h.qsaid = "NA"
             h.qpref = "NA"
             h.comment = "information about multiple firm"
-            h.quote = stence
+            h.quote = h.sentence = stence
             h.todf_info()
 
 
@@ -484,7 +512,7 @@ def info_extraction(stence, orgs):
             h.qsaid = "NA"
             h.qpref = "NA"
             h.comment = "information about person"
-            h.quote = stence
+            h.quote = h.sentence = stence
             h.todf_info()
 
 def role_set(role_list, var_to_strip):
@@ -557,6 +585,25 @@ def flatten(ugly_list_of_lists):
     return result
 
 
+
+# function to print sentiments
+# of the sentence.
+def sentiment_scores(sentence):
+    # Create a SentimentIntensityAnalyzer object.
+    sid_obj = SentimentIntensityAnalyzer()
+
+    # polarity_scores method of SentimentIntensityAnalyzer
+    # oject gives a sentiment dictionary.
+    # which contains pos, neg, neu, and compound scores.
+    sentiment_dict = sid_obj.polarity_scores(sentence)
+    sent_vader_neg = sentiment_dict['neg']
+    sent_vader_neu = sentiment_dict['neu']
+    sent_vader_pos = sentiment_dict['pos']
+
+    return sent_vader_neg, sent_vader_neu, sent_vader_pos
+
+
+
 z = 0
 
 
@@ -566,7 +613,7 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(54,85)
-arts = [604]
+arts = [7]
 
 for art in arts:
 #for art in dfa.index:
@@ -742,8 +789,8 @@ for art in arts:
         corgs = []
 
         # Create a sentence-level DFs
-        columns = ['no.', 'stence', 'filtered_sent', 'sentiment', 'orgs', 'corgs', 'ppl', 'prows', 'people',
-                   'sppl', 'covered', 'events']
+        columns = ['no.', 'sentence', 'filtered_sent', 'sentiment_stanza', 'orgs', 'corgs', 'ppl', 'prows', 'people',
+                   'sppl', 'covered', 'events', 'sent_vader_neg', 'sent_vader_neu', 'sent_vader_pos']
         dfsent = pd.DataFrame(columns=columns)
 
         # Create a DF for people
@@ -771,7 +818,10 @@ for art in arts:
                     # Set a trigger variable to 0 once start a new sentence.
                     dr = 0
                     # Calculate the sentiment for each sentence
-                    h.sentiment = sent.sentiment
+                    h.sentiment_stanza = sent.sentiment
+                    h.sent_vader_neg = sentiment_scores(stence)[0]
+                    h.sent_vader_neu = sentiment_scores(stence)[1]
+                    h.sent_vader_pos = sentiment_scores(stence)[2]
 
                     #for ent in sent.ents:
                     #    print(n, ent.text, ent.type)
@@ -922,12 +972,14 @@ for art in arts:
                 fprows = []
                 fprod = []
 
-                h.stence = stence = sent.text
-
+                h.sentence = stence = sent.text
 
                 # Calculate the sentiment for each sentence
-                h.sentiment = sentiment = sent.sentiment
-
+                h.sentiment_stanza = sentiment_stanza = sent.sentiment
+                h.sent_vader_neg = sent_vader_neg = sentiment_scores(stence)[0]
+                h.sent_vader_neu = sent_vader_neu = sentiment_scores(stence)[1]
+                h.sent_vader_pos = sent_vader_pos = sentiment_scores(stence)[2]
+                
                 #for ent in sent.ents:
                 #    print(n, ent.text, ent.type)
 
@@ -1590,8 +1642,9 @@ for art in arts:
 
                 covered = None
 
-                dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent,sentiment, orgs, corgs, ppl, prows,
-                                                 people, sppl, covered, events]
+                dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent, sentiment_stanza, orgs, corgs, ppl,
+                                                 prows, people, sppl, covered, events, sent_vader_neg, sent_vader_neu, 
+                                                 sent_vader_pos]
 
                 n += 1
                 h.n += 1
@@ -1607,10 +1660,13 @@ for art in arts:
             for se in dfsent.index:
 
                 # Assign the various lists and variables for this sentence from the dfsent dataframe
-                stence = dfsent["stence"][se]
-                h.stence = stence
+                stence = dfsent["sentence"][se]
+                h.sentence = stence
                 filtered_sent = dfsent["filtered_sent"][se]
-                h.sentiment = dfsent["sentiment"][se]
+                h.sentiment_stanza = dfsent["sentiment_stanza"][se]
+                h.sent_vader_neg = dfsent["sent_vader_neg"][se]
+                h.sent_vader_neu = dfsent["sent_vader_neu"][se]
+                h.sent_vader_pos = dfsent["sent_vader_pos"][se]
                 orgs = dfsent["orgs"][se]
                 corgs = dfsent["orgs"][se]
                 ppl = dfsent["ppl"][se]
@@ -1679,6 +1735,12 @@ for art in arts:
                 nindex = quote_set(stence)[12]
                 quotes = quote_set(stence)[13]
                 multi_sent_indicator = quote_set(stence)[14]
+                sent_vader_negs = quote_set(stence)[15]
+                sent_vader_neus = quote_set(stence)[16]
+                sent_vader_poss = quote_set(stence)[17]
+
+
+
                 psent_index = n - 2
 
 
@@ -1726,8 +1788,11 @@ for art in arts:
                                 if multi_sent_indicator == 1:
                                     for i in range(0, len(msent_quotes)):
                                         h.quote = msent_quotes[i]
-                                        h.stence = stences[i]
-                                        h.sentiment = sentiments[i]
+                                        h.sentence = stences[i]
+                                        h.sentiment_stanza = sentiments[i]
+                                        h.sent_vader_neg = sent_vader_negs[i]
+                                        h.sent_vader_neu = sent_vader_neus[i]
+                                        h.sent_vader_pos = sent_vader_poss[i]
                                         h.n = nindex[i]
                                         h.qtype = "multi-sentence quote"
                                         h.todf()
@@ -1763,8 +1828,11 @@ for art in arts:
                                         if multi_sent_indicator == 1:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
-                                                h.sentiment = sentiments[i]
+                                                h.sentence = stences[i]
+                                                h.sentiment_stanza= sentiments[i]
+                                                h.sent_vader_neg = sent_vader_negs[i]
+                                                h.sent_vader_neu = sent_vader_neus[i]
+                                                h.sent_vader_pos = sent_vader_poss[i]
                                                 h.n = nindex[i]
                                                 h.qtype = "multi-sentence quote"
                                                 h.todf()
@@ -1787,8 +1855,11 @@ for art in arts:
                                         if multi_sent_indicator == 1:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
-                                                h.sentiment = sentiments[i]
+                                                h.sentence = stences[i]
+                                                h.sentiment_stanza= sentiments[i]
+                                                h.sent_vader_neg = sent_vader_negs[i]
+                                                h.sent_vader_neu = sent_vader_neus[i]
+                                                h.sent_vader_pos = sent_vader_poss[i]
                                                 h.n = nindex[i]
                                                 h.qtype = "multi-sentence quote"
                                                 h.todf()
@@ -1825,8 +1896,11 @@ for art in arts:
                                             if multi_sent_indicator == 1:
                                                 for i in range(0, len(msent_quotes)):
                                                     h.quote = msent_quotes[i]
-                                                    h.stence = stences[i]
-                                                    h.sentiment = sentiments[i]
+                                                    h.sentence = stences[i]
+                                                    h.sentiment_stanza= sentiments[i]
+                                                    h.sent_vader_neg = sent_vader_negs[i]
+                                                    h.sent_vader_neu = sent_vader_neus[i]
+                                                    h.sent_vader_pos = sent_vader_poss[i]
                                                     h.n = nindex[i]
                                                     h.qtype = "multi-sentence quote"
                                                     h.todf()
@@ -1851,8 +1925,11 @@ for art in arts:
                                             if multi_sent_indicator == 1:
                                                 for i in range(0, len(msent_quotes)):
                                                     h.quote = msent_quotes[i]
-                                                    h.stence = stences[i]
-                                                    h.sentiment = sentiments[i]
+                                                    h.sentence = stences[i]
+                                                    h.sentiment_stanza= sentiments[i]
+                                                    h.sent_vader_neg = sent_vader_negs[i]
+                                                    h.sent_vader_neu = sent_vader_neus[i]
+                                                    h.sent_vader_pos = sent_vader_poss[i]
                                                     h.n = nindex[i]
                                                     h.qtype = "multi-sentence quote"
                                                     h.todf()
@@ -1910,8 +1987,11 @@ for art in arts:
                                             if multi_sent_indicator == 1:
                                                 for i in range(0, len(msent_quotes)):
                                                     h.quote = msent_quotes[i]
-                                                    h.stence = stences[i]
-                                                    h.sentiment = sentiments[i]
+                                                    h.sentence = stences[i]
+                                                    h.sentiment_stanza= sentiments[i]
+                                                    h.sent_vader_neg = sent_vader_negs[i]
+                                                    h.sent_vader_neu = sent_vader_neus[i]
+                                                    h.sent_vader_pos = sent_vader_poss[i]
                                                     h.n = nindex[i]
                                                     h.qtype = "multi-sentence quote"
                                                     h.todf()
@@ -1940,8 +2020,11 @@ for art in arts:
                                                     if multi_sent_indicator == 1:
                                                         for i in range(0, len(msent_quotes)):
                                                             h.quote = msent_quotes[i]
-                                                            h.stence = stences[i]
-                                                            h.sentiment = sentiments[i]
+                                                            h.sentence = stences[i]
+                                                            h.sentiment_stanza= sentiments[i]
+                                                            h.sent_vader_neg = sent_vader_negs[i]
+                                                            h.sent_vader_neu = sent_vader_neus[i]
+                                                            h.sent_vader_pos = sent_vader_poss[i]
                                                             h.n = nindex[i]
                                                             h.qtype = "multi-sentence quote"
                                                             h.todf()
@@ -2090,8 +2173,11 @@ for art in arts:
                                             for i in range(0, len(msent_quotes)):
 
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
-                                                h.sentiment = sentiments[i]
+                                                h.sentence = stences[i]
+                                                h.sentiment_stanza= sentiments[i]
+                                                h.sent_vader_neg = sent_vader_negs[i]
+                                                h.sent_vader_neu = sent_vader_neus[i]
+                                                h.sent_vader_pos = sent_vader_poss[i]
                                                 h.n = nindex[i]
                                                 # Then it must be the most recent person, who is from this sentence
                                                 h.last = person_set(most_recent_person, next_person)[0]
@@ -2109,7 +2195,7 @@ for art in arts:
                                         elif len(first_pron) > 0 and no_prows == 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
+                                                h.sentence = stences[i]
                                                 # Then it must be the most recent person
                                                 h.last = person_set(most_recent_person, next_person)[0]
                                                 h.person = person_set(most_recent_person, next_person)[1]
@@ -2172,8 +2258,11 @@ for art in arts:
                             if multi_sent_indicator == 1:
                                 for i in range(0, len(msent_quotes)):
                                     h.quote = msent_quotes[i]
-                                    h.stence = stences[i]
-                                    h.sentiment = sentiments[i]
+                                    h.sentence = stences[i]
+                                    h.sentiment_stanza= sentiments[i]
+                                    h.sent_vader_neg = sent_vader_negs[i]
+                                    h.sent_vader_neu = sent_vader_neus[i]
+                                    h.sent_vader_pos = sent_vader_poss[i]
                                     h.n = nindex[i]
                                     h.qtype = "multi-sentence quote"
                                     h.todf()
@@ -2187,8 +2276,11 @@ for art in arts:
                                 if len(msent_quote) > 0:
                                     for i in range(0, len(msent_quotes)):
                                         h.quote = msent_quotes[i]
-                                        h.stence = stences[i]
-                                        h.sentiment = sentiments[i]
+                                        h.sentence = stences[i]
+                                        h.sentiment_stanza= sentiments[i]
+                                        h.sent_vader_neg = sent_vader_negs[i]
+                                        h.sent_vader_neu = sent_vader_neus[i]
+                                        h.sent_vader_pos = sent_vader_poss[i]
                                         h.n = nindex[i]
                                         h.last = prows[0][0]
                                         h.person = prows[0][1]
@@ -2222,7 +2314,6 @@ for art in arts:
                                 df.loc[len(df.index) - 1].at['former'] = prows[0][4]
 
                             elif len(q) == 0:
-
                                 h.quote = stence
                                 h.last = prows[0][0]
                                 h.person = prows[0][1]
@@ -2292,8 +2383,11 @@ for art in arts:
                                         if len(msent_quote) > 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
-                                                h.sentiment = sentiments[i]
+                                                h.sentence = stences[i]
+                                                h.sentiment_stanza= sentiments[i]
+                                                h.sent_vader_neg = sent_vader_negs[i]
+                                                h.sent_vader_neu = sent_vader_neus[i]
+                                                h.sent_vader_pos = sent_vader_poss[i]
                                                 h.n = nindex[i]
                                                 h.last = prows[0][0]
                                                 h.person = prows[0][1]
@@ -2351,8 +2445,11 @@ for art in arts:
                                 if len(msent_quote) > 0:
                                     for i in range(0, len(msent_quotes)):
                                         h.quote = msent_quotes[i]
-                                        h.stence = stences[i]
-                                        h.sentiment = sentiments[i]
+                                        h.sentence = stences[i]
+                                        h.sentiment_stanza= sentiments[i]
+                                        h.sent_vader_neg = sent_vader_negs[i]
+                                        h.sent_vader_neu = sent_vader_neus[i]
+                                        h.sent_vader_pos = sent_vader_poss[i]
                                         h.n = nindex[i]
                                         h.qtype = "multi-sentence quote"
                                         h.todf()
@@ -2376,8 +2473,11 @@ for art in arts:
                                         if len(last_ppl) > 0 and no_people == 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
-                                                h.sentiment = sentiments[i]
+                                                h.sentence = stences[i]
+                                                h.sentiment_stanza= sentiments[i]
+                                                h.sent_vader_neg = sent_vader_negs[i]
+                                                h.sent_vader_neu = sent_vader_neus[i]
+                                                h.sent_vader_pos = sent_vader_poss[i]
                                                 h.n = nindex[i]
                                                 h.last = dfsent.loc[last_sindex].at['prows'][0][0]
                                                 h.person = dfsent.loc[last_sindex].at['prows'][0][1]
@@ -2395,8 +2495,11 @@ for art in arts:
                                         elif len(last_ppl) == 0 and no_prows == 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
-                                                h.stence = stences[i]
-                                                h.sentiment = sentiments[i]
+                                                h.sentence = stences[i]
+                                                h.sentiment_stanza= sentiments[i]
+                                                h.sent_vader_neg = sent_vader_negs[i]
+                                                h.sent_vader_neu = sent_vader_neus[i]
+                                                h.sent_vader_pos = sent_vader_poss[i]
                                                 h.n = nindex[i]
                                                 h.last = person_set(most_recent_person, next_person)[0]
                                                 h.person = person_set(most_recent_person, next_person)[1]
@@ -2451,8 +2554,11 @@ for art in arts:
                                     if multi_sent_indicator == 1:
                                         for i in range(0, len(msent_quotes)):
                                             h.quote = msent_quotes[i]
-                                            h.stence = stences[i]
-                                            h.sentiment = sentiments[i]
+                                            h.sentence = stences[i]
+                                            h.sentiment_stanza= sentiments[i]
+                                            h.sent_vader_neg = sent_vader_negs[i]
+                                            h.sent_vader_neu = sent_vader_neus[i]
+                                            h.sent_vader_pos = sent_vader_poss[i]
                                             h.n = nindex[i]
                                             h.qtype = "multi-sentence quote"
                                             h.todf()
@@ -2466,8 +2572,11 @@ for art in arts:
                                 if len(msent_quote) > 0 and no_prows == 0:
                                     for i in range(0, len(msent_quotes)):
                                         h.quote = msent_quotes[i]
-                                        h.stence = stences[i]
-                                        h.sentiment = sentiments[i]
+                                        h.sentence = stences[i]
+                                        h.sentiment_stanza= sentiments[i]
+                                        h.sent_vader_neg = sent_vader_negs[i]
+                                        h.sent_vader_neu = sent_vader_neus[i]
+                                        h.sent_vader_pos = sent_vader_poss[i]
                                         h.n = nindex[i]
                                         h.last = person_set(most_recent_person, next_person)[0]
                                         h.person = person_set(most_recent_person, next_person)[1]
@@ -2489,9 +2598,10 @@ for art in arts:
 
 
         #except:
-        #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
-        #                            "Sentence-level Issue", AN, date, source, regions, subjects, misc, industries,
-        #                            focfirm, by, comp, sentiment, stence]
+        #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", sentence, "Issue", "Issue",
+        #                            "Issue", "Sentence-level Issue", AN, date, source, regions, subjects, misc, industries,
+        #                            focfirm, by, comp, sentiment_stanza, sent_vader_neg, sent_vader_neu,
+#                                    sent_vader_poss]
 
         t2 = time.time()
         total = t1 - t0
@@ -2500,8 +2610,8 @@ for art in arts:
 
     #except:
     #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
-    #                            "Article NLP issue", AN, date, source, "Issue", "Issue", "Issue", "Issue", "Issue",
-    #                            "Issue", "Issue", "Issue", "Issue"]
+    #                            "Issue", "Article NLP issue", AN, date, source, "Issue", "Issue", "Issue", "Issue",
+    #                            "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue"]
 
 
 
