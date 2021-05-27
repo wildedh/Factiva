@@ -13,13 +13,13 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 # stanza.download('en')
 nlp = stanza.Pipeline('en')
 
-#dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/filtered_750.pkl')
+#dfa = pd.read_pickle(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/filtered_63_05_26.pkl')
 #dfa = dfa.reset_index(drop=False)
 #dfa.rename(columns = {'index':'old index'}, inplace = True)
 
 
-dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/final4.xlsx')
-#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_06_2684_articles.xlsx')
+#dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/filtered_63_05_26.xlsx')
+dfa = pd.read_excel(r'C:/Users/danwilde/Dropbox (Penn)/Dissertation/Factiva/issues_2021_05_27_2125_articles.xlsx')
 
 
 t0 = time.time()
@@ -57,7 +57,7 @@ l2 = r'executive\s+vice\s+president|executive\s+vice-president|sr\.\s+vice\s+pre
 
 l3 = r'vice\s+chair\S+|vice\s+president|vice-president|senior\s+manager|sr.*manager|senior\s+director|' \
      r'chief\s+executive|senior\s+manager|sr.*manager|vp\s+of\s+\S+|global\+director|senior\s+director|' \
-     r'sr.*director|managing\s+director|vice\s+minister|prime\s+minister|founding\s+partner|board\s+member' \
+     r'sr.*director|executive\s+director|managing\s+director|vice\s+minister|prime\s+minister|founding\s+partner|board\s+member' \
      r'business\s+owner|sales\s+manager|svp|chief\s+engineer|chief\s+of\s+\S+|founder\s+and+S+'
 
 l4 = r'president|chair\S+|director|manager|vp|' \
@@ -86,7 +86,7 @@ analyst = r'analyst|negotiator|\baide\b|\bpilot\b|professor|' \
      r'leader|president|police\s+officer|police\s+chief|academy\s+award-winner|actor|actress'
 car_types = r'pickup\s+truck|truck|crossover|sedan|minivan|van|sports-utility\s+vehicle|sports\s+utility\s+vehicle|' \
             r'SUV|convertible\b|hatchback|station\s+wagon|coupe|sports|s+car|compact\s+car|roadster|mid-size\s+car|' \
-            r'supercar'
+            r'supercar|brand'
 car_makers_names = r'Aston\s+Martin'
 media = r'Reuters|Bloomberg|CNN|The\s+Independent|USA\s+Today|' \
         r'Press|Daily|Times|Chronicle|' \
@@ -105,6 +105,9 @@ mxpron = 2
 mxorg1 = 2
 mxfrmer = 2
 mxcar = 2
+mxcomp = 100
+
+
 
 # Create a class in which to place variables and then create a function that will place all the variables
 # in a df row. Makes the code a bit more readable when you go through the todf function doezens of times
@@ -427,7 +430,30 @@ def ofrolesearch(sentence, non_role_var, max_char):
     return org_find
 
 
+def companysrolesearch(sentence,non_role_var, max_char):
+    o3a = re.findall(
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?company\'s\s+(' + l1 + '))',
+        sentence,
+        re.IGNORECASE)
+    o3b = re.findall(
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?company\'s\s+(' + l2 + '))',
+        sentence,
+        re.IGNORECASE)
+    o3c = re.findall(
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?company\'s\s+(' + l3 + '))',
+        sentence,
+        re.IGNORECASE)
+    o3d = re.findall(
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?company\'s\s+(' + l4 + '))',
+        sentence,
+        re.IGNORECASE)
+    o3e = re.findall(
+        r'\b(?:(' + non_role_var + r')\W+(?:\w+\W+){0,' + str(max_char) + r'}?company\'s\s+(' + l5 + '))',
+        sentence)
 
+    org_find = o3a + o3b + o3c + o3d + o3e
+
+    return org_find
 
 def threerolesearch(sentence, non_role_var1, non_role_var2):
     c1 = re.findall(r'' + non_role_var1 + r'.+(' + l1 + r').+(' + non_role_var2 + r')', sentence,
@@ -729,6 +755,8 @@ for art in arts:
         text = re.sub(r'\.\s*\.\s*\.', r'', text)
         # Remove any spaces beyond one.
         text = re.sub(r'(\s+)', r' ', text)
+        # Remove the title of of professor with just a the Prof
+        text = re.sub(r'Prof.', r'Prof', text)
 
 
 
@@ -766,6 +794,11 @@ for art in arts:
         for w in zy:
             text = re.sub(r'(' + w[0] + r')', w[1], text)
 
+
+
+        #Encode the text as English to remove any foreign letters
+        encoded_string = text.encode("ascii", "ignore")
+        text = encoded_string.decode()
 
         ################################
         # Loading the text into the Stanza nlp system
@@ -979,7 +1012,7 @@ for art in arts:
                 h.sent_vader_neg = sent_vader_neg = sentiment_scores(stence)[0]
                 h.sent_vader_neu = sent_vader_neu = sentiment_scores(stence)[1]
                 h.sent_vader_pos = sent_vader_pos = sentiment_scores(stence)[2]
-                
+
                 #for ent in sent.ents:
                 #    print(n, ent.text, ent.type)
 
@@ -1327,7 +1360,7 @@ for art in arts:
                                                 if len(j) > 0:
                                                     person = per
                                                     last = person_name(person)[1]
-                                                    role = m[0][0]
+                                                    role = m[0][-1]
                                                     firm = o
                                                     former = former_search(filtered_sent, role)
                                                     c += 1
@@ -1335,56 +1368,71 @@ for art in arts:
                                                     if len(gm) == 0:
                                                         break
 
+                                                # If not, check if "company's" then title. Then just take the
+                                                # first company because both companies would be related.
 
-                                                # If only one person and the only multiple companies are
-                                                # part of each other, just pick the first one mentioned.
                                                 elif len(j) == 0:
-                                                    if len(ppl) == 1 and repeat_count+1 == len(orgs):
-                                                        os = longrolesearch(filtered_sent, o)
+                                                    m = companysrolesearch(filtered_sent, o, mxcomp)
+                                                    k = ''.join(''.join(elems) for elems in m)
+                                                    if len(k)>0 and len(ppl) == 1:
                                                         person = per
                                                         last = person_name(person)[1]
-                                                        role = role_set(os, o)
+                                                        role = m[0][-1]
                                                         firm = o
                                                         former = former_search(filtered_sent, role)
-
                                                         c += 1
                                                         q += 1
                                                         if len(gm) == 0:
                                                             break
+                                                    # If only one person and the only multiple companies are
+                                                    # part of each other, just pick the first one mentioned.
+                                                    elif len(k) == 0:
+                                                        if len(ppl) == 1 and repeat_count+1 == len(orgs):
+                                                            os = longrolesearch(filtered_sent, o)
+                                                            person = per
+                                                            last = person_name(person)[1]
+                                                            role = role_set(os, o)
+                                                            firm = o
+                                                            former = former_search(filtered_sent, role)
 
-                                                    # If not any of these three strong matches ('s, of, whose),
-                                                    # check on a weaker match: if name are close to title
-                                                    else:
+                                                            c += 1
+                                                            q += 1
+                                                            if len(gm) == 0:
+                                                                break
 
-                                                        m = shortrolesearch(filtered_sent, o, mxorg1)
-                                                        on = ''.join(''.join(elems) for elems in m)
+                                                        # If not any of these three strong matches ('s, of, whose),
+                                                        # check on a weaker match: if name are close to title
+                                                        else:
 
-                                                        # If so, check if person is also near the title
-                                                        if len(on) > 0:
-                                                            m = shortrolesearch(filtered_sent, per, mxorg1)
-                                                            ol = ''.join(''.join(elems) for elems in m)
+                                                            m = shortrolesearch(filtered_sent, o, mxorg1)
+                                                            on = ''.join(''.join(elems) for elems in m)
 
-                                                            # If name and person are close to title, assign
-                                                            if len(ol) > 0:
-                                                                person = per
-                                                                last = person_name(person)[1]
-                                                                role = role_set(m, per)
-                                                                former = former_search(filtered_sent, role)
-                                                                firm = o
-                                                                c += 1
-                                                                if len(gm) == 0:
-                                                                    break
-                                                        # If not, check if name followed by just one org and a title.
-                                                        elif len(on) == 0:
-                                                            m = threerolesearch(filtered_sent, per, o)
+                                                            # If so, check if person is also near the title
+                                                            if len(on) > 0:
+                                                                m = shortrolesearch(filtered_sent, per, mxorg1)
+                                                                ol = ''.join(''.join(elems) for elems in m)
 
-                                                            if len(m) > 0:
-                                                                r = role_set(role_list,per)
-                                                                if len(r) > 0:
-                                                                    xl += 1
-                                                                    rolexl = r
-                                                                    firmxl = o
+                                                                # If name and person are close to title, assign
+                                                                if len(ol) > 0:
+                                                                    person = per
+                                                                    last = person_name(person)[1]
+                                                                    role = role_set(m, per)
+                                                                    former = former_search(filtered_sent, role)
+                                                                    firm = o
                                                                     c += 1
+                                                                    if len(gm) == 0:
+                                                                        break
+                                                            # If not, check if name followed by just one org and a title.
+                                                            elif len(on) == 0:
+                                                                m = threerolesearch(filtered_sent, per, o)
+
+                                                                if len(m) > 0:
+                                                                    r = role_set(role_list,per)
+                                                                    if len(r) > 0:
+                                                                        xl += 1
+                                                                        rolexl = r
+                                                                        firmxl = o
+                                                                        c += 1
 
 
                                 if xl == 1:
@@ -1643,7 +1691,7 @@ for art in arts:
                 covered = None
 
                 dfsent.loc[len(dfsent.index)] = [n, stence, filtered_sent, sentiment_stanza, orgs, corgs, ppl,
-                                                 prows, people, sppl, covered, events, sent_vader_neg, sent_vader_neu, 
+                                                 prows, people, sppl, covered, events, sent_vader_neg, sent_vader_neu,
                                                  sent_vader_pos]
 
                 n += 1
@@ -1785,7 +1833,7 @@ for art in arts:
                                     h.quote = q
                                     h.todf()
                                     dx += 1
-                                if multi_sent_indicator == 1:
+                                if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                     for i in range(0, len(msent_quotes)):
                                         h.quote = msent_quotes[i]
                                         h.sentence = stences[i]
@@ -1825,7 +1873,7 @@ for art in arts:
                                             h.qtype = "single sentence quote"
                                             h.todf()
                                             dx += 1
-                                        if multi_sent_indicator == 1:
+                                        if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
                                                 h.sentence = stences[i]
@@ -1852,7 +1900,7 @@ for art in arts:
                                             h.qtype = "single sentence quote"
                                             h.todf()
                                             dx += 1
-                                        if multi_sent_indicator == 1:
+                                        if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
                                                 h.sentence = stences[i]
@@ -1893,7 +1941,7 @@ for art in arts:
                                                 h.qtype = "single sentence quote"
                                                 h.todf()
                                                 dx += 1
-                                            if multi_sent_indicator == 1:
+                                            if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                                 for i in range(0, len(msent_quotes)):
                                                     h.quote = msent_quotes[i]
                                                     h.sentence = stences[i]
@@ -1922,7 +1970,7 @@ for art in arts:
                                                 h.qtype = "single sentence quote"
                                                 h.todf()
                                                 dx += 1
-                                            if multi_sent_indicator == 1:
+                                            if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                                 for i in range(0, len(msent_quotes)):
                                                     h.quote = msent_quotes[i]
                                                     h.sentence = stences[i]
@@ -1984,7 +2032,7 @@ for art in arts:
                                                 h.qtype = "single sentence quote"
                                                 h.todf()
                                                 dx += 1
-                                            if multi_sent_indicator == 1:
+                                            if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                                 for i in range(0, len(msent_quotes)):
                                                     h.quote = msent_quotes[i]
                                                     h.sentence = stences[i]
@@ -2017,7 +2065,7 @@ for art in arts:
                                                         h.qtype = "single sentence quote"
                                                         h.todf()
                                                         dx += 1
-                                                    if multi_sent_indicator == 1:
+                                                    if multi_sent_indicator == 1 and len(msent_quote) > 0:
                                                         for i in range(0, len(msent_quotes)):
                                                             h.quote = msent_quotes[i]
                                                             h.sentence = stences[i]
@@ -2256,17 +2304,18 @@ for art in arts:
                                 h.todf()
                                 dx += 1
                             if multi_sent_indicator == 1:
-                                for i in range(0, len(msent_quotes)):
-                                    h.quote = msent_quotes[i]
-                                    h.sentence = stences[i]
-                                    h.sentiment_stanza= sentiments[i]
-                                    h.sent_vader_neg = sent_vader_negs[i]
-                                    h.sent_vader_neu = sent_vader_neus[i]
-                                    h.sent_vader_pos = sent_vader_poss[i]
-                                    h.n = nindex[i]
-                                    h.qtype = "multi-sentence quote"
-                                    h.todf()
-                                    h.n = n
+                                if len(msent_quote) > 0:
+                                    for i in range(0, len(msent_quotes)):
+                                        h.quote = msent_quotes[i]
+                                        h.sentence = stences[i]
+                                        h.sentiment_stanza= sentiments[i]
+                                        h.sent_vader_neg = sent_vader_negs[i]
+                                        h.sent_vader_neu = sent_vader_neus[i]
+                                        h.sent_vader_pos = sent_vader_poss[i]
+                                        h.n = nindex[i]
+                                        h.qtype = "multi-sentence quote"
+                                        h.todf()
+                                        h.n = n
 
 
                         # Check if the multiple sentence quote
@@ -2598,10 +2647,9 @@ for art in arts:
 
 
         #except:
-        #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", sentence, "Issue", "Issue",
+        #   df.loc[len(df.index)] = [n, "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue", "Issue",
         #                            "Issue", "Sentence-level Issue", AN, date, source, regions, subjects, misc, industries,
-        #                            focfirm, by, comp, sentiment_stanza, sent_vader_neg, sent_vader_neu,
-#                                    sent_vader_poss]
+        #                            focfirm, by, comp, "Issue", "Issue", "Issue", "Issue"]
 
         t2 = time.time()
         total = t1 - t0
@@ -2620,8 +2668,8 @@ for art in arts:
 # OUTFILE = f"{OUTDIR}/{INFILE.split('.')[0]}_df_quotes_{STARTROW.zfill(6)}_{ENDROW.zfill(6)}.xlsx"
 # df.to_excel(OUTFILE)
 
-
 df
+#df.to_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final_63_05_26.xlsx')
 
 
 # TO DO:
