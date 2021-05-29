@@ -91,7 +91,8 @@ car_makers_names = r'Aston\s+Martin'
 media = r'Reuters|Bloomberg|CNN|The\s+Independent|USA\s+Today|' \
         r'Press|Daily|Times|Chronicle|' \
         r'Journal|News|Herald|Post|Weekly|Telegraph|Wire|Bulletin|Inquirer|Digest'
-
+prepositions =r'with|against|behind|before|because\s+of|following|from|in\s+spite\s+of|instead\s+of|' \
+              r'than|over|under|versus|without|like|from'
 
 maxch = str(200)
 maxch1 = str(60)
@@ -639,7 +640,7 @@ z = 0
 #######################################################################################
 #######################################################################################
 #arts = range(54,85)
-arts = [2]
+arts = [8]
 
 for art in arts:
 #for art in dfa.index:
@@ -930,6 +931,7 @@ for art in arts:
                                 if len(l) > 0:
                                     # Strip the beginning with the quote.
                                     h.quote = re.sub(r'^.*' + last + r':', '', stence)
+                                    h.sentence = h.quote
                                     h.last = per[0]
                                     h.person = per[1]
                                     h.role = per[2]
@@ -952,6 +954,7 @@ for art in arts:
                             # If so, then the sentence belongs to the last person assigned.
                             if len(people) > 0:
                                 h.quote = re.sub(r'^.*' + last + r':', '', stence)
+                                h.sentence = h.quote
                                 h.last = sppl[-1][0]
                                 h.person = sppl[-1][1]
                                 h.role = sppl[-1][2]
@@ -1206,6 +1209,9 @@ for art in arts:
 
                             # Multiple orgs in sentence
                             elif len(orgs) > 1:
+
+
+
                                 # Create list and variable that will be used at the end of this iteration of orgs
                                 # "gm" checks if there are any instances in which an org is a substring of another
                                 #  org name. If yes, len(g)>0. If not, len(g) = 0 and you're good.
@@ -1350,6 +1356,11 @@ for art in arts:
                                                 if len(gm) == 0:
                                                     break
 
+
+
+
+
+
                                             # If not, check if [title] "of" near [org]
                                             elif len(m) == 0:
                                                 m = ofrolesearch(filtered_sent, o, mxorg1)
@@ -1370,7 +1381,6 @@ for art in arts:
 
                                                 # If not, check if "company's" then title. Then just take the
                                                 # first company because both companies would be related.
-
                                                 elif len(j) == 0:
                                                     m = companysrolesearch(filtered_sent, o, mxcomp)
                                                     k = ''.join(''.join(elems) for elems in m)
@@ -1384,55 +1394,83 @@ for art in arts:
                                                         q += 1
                                                         if len(gm) == 0:
                                                             break
-                                                    # If only one person and the only multiple companies are
-                                                    # part of each other, just pick the first one mentioned.
+
+                                                    # If not, check if an org has a word indicated the object and not the
+                                                    # subject of the sentence. For example, consider the word "with" before VW in
+                                                    # "Ford entered a JV with VW, said John Smith VP of Sales." In this case
+                                                    # VW is irrelevant in terms of assigning the company to the person.
                                                     elif len(k) == 0:
-                                                        if len(ppl) == 1 and repeat_count+1 == len(orgs):
-                                                            os = longrolesearch(filtered_sent, o)
-                                                            person = per
-                                                            last = person_name(person)[1]
-                                                            role = role_set(os, o)
-                                                            firm = o
-                                                            former = former_search(filtered_sent, role)
+                                                        if len (orgs) == 2:
+                                                            orgs2 = orgs.copy()
+                                                            for i, org in enumerate(orgs2):
+                                                                check_with = re.findall(r'(' + prepositions + r')\s+' + org + r'',
+                                                                                        filtered_sent, re.IGNORECASE)
+                                                                if len(check_with) > 0:
+                                                                    del orgs2[i]
+                                                            if len(orgs2)==1:
+                                                                os = longrolesearch(filtered_sent, orgs2[0])
+                                                                person = per
+                                                                last = person_name(person)[1]
+                                                                firm = orgs2[0]
+                                                                role = role_set(os, firm)
+                                                                former = former_search(filtered_sent, role)
 
-                                                            c += 1
-                                                            q += 1
-                                                            if len(gm) == 0:
-                                                                break
+                                                                c += 1
+                                                                q += 1
+                                                                if len(gm) == 0:
+                                                                    break
 
-                                                        # If not any of these three strong matches ('s, of, whose),
-                                                        # check on a weaker match: if name are close to title
-                                                        else:
 
-                                                            m = shortrolesearch(filtered_sent, o, mxorg1)
-                                                            on = ''.join(''.join(elems) for elems in m)
 
-                                                            # If so, check if person is also near the title
-                                                            if len(on) > 0:
-                                                                m = shortrolesearch(filtered_sent, per, mxorg1)
-                                                                ol = ''.join(''.join(elems) for elems in m)
-
-                                                                # If name and person are close to title, assign
-                                                                if len(ol) > 0:
+                                                            # If only one person and the only multiple companies are
+                                                            # part of each other, just pick the first one mentioned.
+                                                            elif len(orgs2)!= 1:
+                                                                if len(ppl) == 1 and repeat_count+1 == len(orgs):
+                                                                    os = longrolesearch(filtered_sent, o)
                                                                     person = per
                                                                     last = person_name(person)[1]
-                                                                    role = role_set(m, per)
-                                                                    former = former_search(filtered_sent, role)
+                                                                    role = role_set(os, o)
                                                                     firm = o
+                                                                    former = former_search(filtered_sent, role)
+
                                                                     c += 1
+                                                                    q += 1
                                                                     if len(gm) == 0:
                                                                         break
-                                                            # If not, check if name followed by just one org and a title.
-                                                            elif len(on) == 0:
-                                                                m = threerolesearch(filtered_sent, per, o)
 
-                                                                if len(m) > 0:
-                                                                    r = role_set(role_list,per)
-                                                                    if len(r) > 0:
-                                                                        xl += 1
-                                                                        rolexl = r
-                                                                        firmxl = o
-                                                                        c += 1
+                                                                # If not any of these three strong matches ('s, of, whose),
+                                                                # check on a weaker match: if name are close to title
+                                                                else:
+
+                                                                    m = shortrolesearch(filtered_sent, o, mxorg1)
+                                                                    on = ''.join(''.join(elems) for elems in m)
+
+                                                                    # If so, check if person is also near the title
+                                                                    if len(on) > 0:
+                                                                        m = shortrolesearch(filtered_sent, per, mxorg1)
+                                                                        ol = ''.join(''.join(elems) for elems in m)
+
+                                                                        # If name and person are close to title, assign
+                                                                        if len(ol) > 0:
+                                                                            person = per
+                                                                            last = person_name(person)[1]
+                                                                            role = role_set(m, per)
+                                                                            former = former_search(filtered_sent, role)
+                                                                            firm = o
+                                                                            c += 1
+                                                                            if len(gm) == 0:
+                                                                                break
+                                                                    # If not, check if name followed by just one org and a title.
+                                                                    elif len(on) == 0:
+                                                                        m = threerolesearch(filtered_sent, per, o)
+
+                                                                        if len(m) > 0:
+                                                                            r = role_set(role_list,per)
+                                                                            if len(r) > 0:
+                                                                                xl += 1
+                                                                                rolexl = r
+                                                                                firmxl = o
+                                                                                c += 1
 
 
                                 if xl == 1:
@@ -2519,7 +2557,7 @@ for art in arts:
                                 if msent_quote is not None:
                                     if len(msent_quote) > 0:
                                         # Check if there's a person in that last sentence
-                                        if len(last_ppl) > 0 and no_people == 0:
+                                        if len(last_ppl) > 0 and no_people == 0 and len(prows)>0:
                                             for i in range(0, len(msent_quotes)):
                                                 h.quote = msent_quotes[i]
                                                 h.sentence = stences[i]
@@ -2671,10 +2709,10 @@ for art in arts:
 df
 #df.to_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final_63_05_26.xlsx')
 
-
 # TO DO:
 # Test 25 random ones.
+# Fix issues of role and firm swap (check the indexing when assigning roles in the functions)
 # Wishlist:
 #       Correct erronious non-space after title (e.g., "vice presidentAndy Peterson") or before title.
-# Make list of news papers
-# avoid false positives if title in between - don't jsut take most recent
+        # Make list of news papers
+        # avoid false positives if title in between - don't jsut take most recent
