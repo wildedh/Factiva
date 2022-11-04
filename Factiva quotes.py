@@ -2708,11 +2708,3 @@ for art in arts:
 
 df
 #df.to_excel(r'C:\Users\danwilde\Dropbox (Penn)\Dissertation\Factiva\final_63_05_26.xlsx')
-
-# TO DO:
-# Test 25 random ones.
-# Fix issues of role and firm swap (check the indexing when assigning roles in the functions)
-# Wishlist:
-#       Correct erronious non-space after title (e.g., "vice presidentAndy Peterson") or before title.
-        # Make list of news papers
-        # avoid false positives if title in between - don't jsut take most recent
